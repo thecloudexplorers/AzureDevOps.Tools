@@ -28,7 +28,7 @@ A PowerShell module providing utilities and automation tools for Azure DevOps. T
 Import-Module AzureDevOps.Tools
 
 # Connect to Azure DevOps
-Connect-AzAccount
+Connect-AzureDevOps
 ```
 
 More detailed usage examples will be added as functions are implemented.
