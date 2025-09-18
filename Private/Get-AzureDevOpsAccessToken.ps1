@@ -71,16 +71,26 @@ function Get-AzureDevOpsAccessToken {
         $Response = Invoke-RestMethod -Uri $TokenUri -Method Post -Body $Body -ContentType "application/x-www-form-urlencoded" -ErrorAction Stop
 
         # Validate response
+        $ValidationErrors = @()
         if (-not $Response) {
-            throw "No response received from token endpoint"
+            $ValidationErrors += "No response received from token endpoint."
         }
-
-        if (-not $Response.access_token) {
-            throw "No access_token in response from Microsoft identity platform"
+        elseif (-not $Response.access_token) {
+            $ValidationErrors += "No access_token in response from Microsoft identity platform."
         }
-
-        if ($Response.token_type -ne "Bearer") {
-            Write-Warning "Unexpected token type: $($Response.token_type). Expected 'Bearer'"
+        elseif ($Response.token_type -ne "Bearer") {
+            $ValidationErrors += "Unexpected token type: $($Response.token_type). Expected 'Bearer'."
+        }
+        if ($ValidationErrors.Count -gt 0) {
+            $ResponseContent = ""
+            try {
+                $ResponseContent = $Response | ConvertTo-Json -Depth 5
+            }
+            catch {
+                $ResponseContent = $Response
+            }
+            $ErrorMsg = "Token response validation failed: " + ($ValidationErrors -join " ") + " Response content: $ResponseContent"
+            throw $ErrorMsg
         }
 
         Write-Verbose "Successfully acquired access token"
