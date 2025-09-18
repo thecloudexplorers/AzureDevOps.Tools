@@ -197,7 +197,6 @@ Describe "Connect-AzureDevOps Integration Tests" -Tag "Integration" {
             $InitialConnection = Connect-AzureDevOps
 
             # Verify the connection persists by checking the stored connection
-                        # Verify the connection persists
             $InitialConnection.Status | Should -Match 'Connected.*'
 
             # Connect again without Force - should reuse
