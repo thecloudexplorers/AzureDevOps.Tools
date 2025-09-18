@@ -1,0 +1,56 @@
+{
+  // Editor formatting
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.rulers": [120],
+  "editor.formatOnSave": true,
+  "editor.wordWrap": "off",
+
+  // PowerShell extension configuration
+  "powershell.enableProfileLoading": true,
+  "powershell.scriptAnalysis.enable": true,
+  "powershell.scriptAnalysis.settingsPath": ".vscode/PSScriptAnalyzerSettings.psd1",
+  "powershell.codeFormatting.openBraceOnSameLine": true,
+  "powershell.codeFormatting.newLineAfterOpenBrace": true,
+  "powershell.codeFormatting.newLineAfterCloseBrace": true,
+  "powershell.codeFormatting.whitespaceAroundOperator": true,
+  "powershell.codeFormatting.useCorrectCasing": true,
+  "powershell.codeFormatting.whitespaceBeforeOpenBrace": true,
+  "powershell.codeFormatting.trimWhitespaceAroundPipe": true,
+  "powershell.codeFormatting.autoCorrectAliases": true,
+  "powershell.codeFormatting.pipelineIndentationStyle": "IncreaseIndentationForFirstPipeline",
+
+  // Files
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  // Code actions
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit",
+    "source.fixAll": "explicit"
+  },
+
+  // Terminal settings
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "cSpell.words": ["endgroup"],
+  "workbench.colorCustomizations": {
+    "activityBar.activeBackground": "#fa1b49",
+    "activityBar.background": "#fa1b49",
+    "activityBar.foreground": "#e7e7e7",
+    "activityBar.inactiveForeground": "#e7e7e799",
+    "activityBarBadge.background": "#155e02",
+    "activityBarBadge.foreground": "#e7e7e7",
+    "commandCenter.border": "#e7e7e799",
+    "sash.hoverBorder": "#fa1b49",
+    "statusBar.background": "#dd0531",
+    "statusBar.foreground": "#e7e7e7",
+    "statusBarItem.hoverBackground": "#fa1b49",
+    "statusBarItem.remoteBackground": "#dd0531",
+    "statusBarItem.remoteForeground": "#e7e7e7",
+    "titleBar.activeBackground": "#dd0531",
+    "titleBar.activeForeground": "#e7e7e7",
+    "titleBar.inactiveBackground": "#dd053199",
+    "titleBar.inactiveForeground": "#e7e7e799"
+  },
+  "peacock.color": "#dd0531"
+}
