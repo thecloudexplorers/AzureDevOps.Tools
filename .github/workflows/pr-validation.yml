@@ -1,0 +1,189 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate-pr:
+    name: Validate Pull Request
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup PowerShell
+      uses: azure/powershell@v2
+      with:
+        azPSVersion: 'latest'
+        inlineScript: |
+          $PSVersionTable
+          
+    - name: Install required modules
+      shell: pwsh
+      run: |
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        Install-Module -Name Pester -Force -Scope CurrentUser
+        Install-Module -Name Az.Accounts -Force -Scope CurrentUser
+        Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+        
+    - name: Validate module manifest and structure
+      shell: pwsh
+      run: |
+        Write-Host "=== Module Validation ==="
+        
+        # Test module manifest
+        Write-Host "Testing module manifest..."
+        $manifest = Test-ModuleManifest -Path './AzureDevOps.Tools.psd1'
+        Write-Host "✅ Module manifest is valid: $($manifest.Name) v$($manifest.Version)"
+        
+        # Check for required files
+        $requiredFiles = @('AzureDevOps.Tools.psd1', 'AzureDevOps.Tools.psm1', 'LICENSE', 'README.md')
+        foreach ($file in $requiredFiles) {
+          if (Test-Path $file) {
+            Write-Host "✅ Required file found: $file"
+          } else {
+            Write-Host "❌ Required file missing: $file"
+            exit 1
+          }
+        }
+        
+        # Import module to verify it loads correctly
+        Write-Host "Importing module..."
+        Import-Module './AzureDevOps.Tools.psd1' -Force
+        $commands = Get-Command -Module AzureDevOps.Tools
+        Write-Host "✅ Module imported successfully. Exported commands: $($commands.Name -join ', ')"
+        
+    - name: Run PSScriptAnalyzer
+      shell: pwsh
+      run: |
+        Write-Host "=== PSScriptAnalyzer ==="
+        
+        $analysisResults = @()
+        
+        # Analyze all PowerShell files
+        $psFiles = Get-ChildItem -Path . -Recurse -Include *.ps1, *.psm1, *.psd1 -Exclude Tests\*
+        
+        foreach ($file in $psFiles) {
+          Write-Host "Analyzing: $($file.Name)"
+          $results = Invoke-ScriptAnalyzer -Path $file.FullName -Severity Warning, Error
+          $analysisResults += $results
+        }
+        
+        if ($analysisResults.Count -gt 0) {
+          Write-Host "❌ PSScriptAnalyzer found issues:"
+          $analysisResults | Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize
+          
+          $errorCount = ($analysisResults | Where-Object Severity -eq 'Error').Count
+          $warningCount = ($analysisResults | Where-Object Severity -eq 'Warning').Count
+          
+          Write-Host "Errors: $errorCount, Warnings: $warningCount"
+          
+          if ($errorCount -gt 0) {
+            Write-Host "❌ Script analysis failed due to errors"
+            exit 1
+          }
+        } else {
+          Write-Host "✅ PSScriptAnalyzer found no issues"
+        }
+        
+    - name: Run unit tests
+      shell: pwsh
+      run: |
+        Write-Host "=== Unit Tests ==="
+        
+        $config = New-PesterConfiguration
+        $config.Run.Path = './Tests'
+        $config.Filter.ExcludeTag = @('Integration')
+        $config.Output.Verbosity = 'Detailed'
+        $config.CodeCoverage.Enabled = $true
+        $config.CodeCoverage.Path = @('./Public/*.ps1', './Private/*.ps1', './AzureDevOps.Tools.psm1')
+        $config.TestResult.Enabled = $true
+        $config.TestResult.OutputFormat = 'JUnitXml'
+        $config.TestResult.OutputPath = './TestResults.xml'
+        
+        $result = Invoke-Pester -Configuration $config -PassThru
+        
+        Write-Host "Test Results:"
+        Write-Host "  Passed: $($result.PassedCount)"
+        Write-Host "  Failed: $($result.FailedCount)"
+        Write-Host "  Skipped: $($result.SkippedCount)"
+        
+        if ($result.CodeCoverage) {
+          $coverage = [math]::Round(($result.CodeCoverage.CoveragePercent), 2)
+          Write-Host "  Code Coverage: $coverage%"
+        }
+        
+        if ($result.FailedCount -gt 0) {
+          Write-Host "❌ Tests failed"
+          exit 1
+        } else {
+          Write-Host "✅ All tests passed"
+        }
+        
+    - name: Publish test results
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: PR Validation Tests
+        path: TestResults.xml
+        reporter: java-junit
+        fail-on-error: false
+        
+    - name: Comment on PR
+      if: always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          // Read test results if available
+          let testSummary = '';
+          try {
+            if (fs.existsSync('TestResults.xml')) {
+              testSummary = '✅ Tests completed - check the test reporter for details.';
+            } else {
+              testSummary = '⚠️ No test results found.';
+            }
+          } catch (error) {
+            testSummary = '❌ Error reading test results.';
+          }
+          
+          const comment = `## PR Validation Results
+          
+          **Module Validation:** ${{ job.status == 'success' && '✅ Passed' || '❌ Failed' }}
+          **Tests:** ${testSummary}
+          
+          This automated validation ensures the module meets quality standards before merging.
+          `;
+          
+          // Find existing comment
+          const comments = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const existingComment = comments.data.find(comment => 
+            comment.body.includes('PR Validation Results')
+          );
+          
+          if (existingComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: comment
+            });
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+          }

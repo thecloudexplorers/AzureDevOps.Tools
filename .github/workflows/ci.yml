@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Test PowerShell Module
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup PowerShell
+      uses: azure/powershell@v2
+      with:
+        azPSVersion: 'latest'
+        inlineScript: |
+          $PSVersionTable
+          
+    - name: Install required modules
+      shell: pwsh
+      run: |
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        Install-Module -Name Pester -Force -Scope CurrentUser
+        Install-Module -Name Az.Accounts -Force -Scope CurrentUser
+        
+    - name: Import and test module manifest
+      shell: pwsh
+      run: |
+        Write-Host "Testing module manifest..."
+        Test-ModuleManifest -Path './AzureDevOps.Tools.psd1'
+        
+        Write-Host "Importing module..."
+        Import-Module './AzureDevOps.Tools.psd1' -Force
+        
+        Write-Host "Getting exported commands..."
+        Get-Command -Module AzureDevOps.Tools
+        
+    - name: Run Pester tests
+      shell: pwsh
+      run: |
+        Write-Host "Running unit tests (excluding integration tests)..."
+        $config = New-PesterConfiguration
+        $config.Run.Path = './Tests'
+        $config.Filter.ExcludeTag = @('Integration')
+        $config.Output.Verbosity = 'Detailed'
+        $config.CodeCoverage.Enabled = $false
+        $config.TestResult.Enabled = $true
+        $config.TestResult.OutputFormat = 'JUnitXml'
+        $config.TestResult.OutputPath = './TestResults.xml'
+        
+        Invoke-Pester -Configuration $config
+        
+    - name: Publish test results
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Pester Tests
+        path: TestResults.xml
+        reporter: java-junit
+        fail-on-error: true
+
+  validate-gallery-readiness:
+    name: Validate PowerShell Gallery Readiness
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup PowerShell
+      uses: azure/powershell@v2
+      with:
+        azPSVersion: 'latest'
+        inlineScript: |
+          $PSVersionTable
+          
+    - name: Install PowerShellGet
+      shell: pwsh
+      run: |
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        Install-Module -Name PowerShellGet -Force -Scope CurrentUser
+        
+    - name: Validate module for PowerShell Gallery
+      shell: pwsh
+      run: |
+        Write-Host "Validating module structure for PowerShell Gallery..."
+        
+        # Test module manifest
+        $manifest = Test-ModuleManifest -Path './AzureDevOps.Tools.psd1'
+        Write-Host "Module: $($manifest.Name) v$($manifest.Version)"
+        
+        # Check required fields for PowerShell Gallery
+        if (-not $manifest.Description) {
+          throw "Module manifest missing Description"
+        }
+        
+        if (-not $manifest.Author) {
+          throw "Module manifest missing Author"
+        }
+        
+        # Validate that all required files exist
+        $requiredFiles = @(
+          'AzureDevOps.Tools.psd1',
+          'AzureDevOps.Tools.psm1',
+          'LICENSE',
+          'README.md'
+        )
+        
+        foreach ($file in $requiredFiles) {
+          if (-not (Test-Path $file)) {
+            throw "Required file missing: $file"
+          }
+        }
+        
+        Write-Host "✅ Module validation passed - ready for PowerShell Gallery"
