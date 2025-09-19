@@ -74,6 +74,9 @@ Invoke-Pester ./Tests
 
 # Setup integration test environment (interactive)
 ./Tests/Setup-IntegrationTestEnvironment.ps1 -Interactive
+
+# Validate CI/CD pipeline setup locally
+./scripts/Test-Pipeline.ps1 -SkipDependencyTests
 ```
 
 ### Test Types
