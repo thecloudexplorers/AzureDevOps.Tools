@@ -137,8 +137,8 @@ Describe "Connect-AzureDevOps Function Tests" {
             $Help.Examples.Count | Should -BeGreaterThan 0
         }
 
-        It "Should support -WhatIf parameter" {
-            (Get-Command Connect-AzureDevOps).Parameters.ContainsKey('WhatIf') | Should -Be $true
+        It "Should not support -WhatIf parameter (connection functions don't modify resources)" {
+            (Get-Command Connect-AzureDevOps).Parameters.ContainsKey('WhatIf') | Should -Be $false
         }
 
         It "Should support -Verbose parameter" {

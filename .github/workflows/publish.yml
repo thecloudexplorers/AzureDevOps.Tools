@@ -1,0 +1,152 @@
+name: Publish to PowerShell Gallery
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0)'
+        required: true
+        type: string
+      force:
+        description: 'Force publish even if version exists'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  publish:
+    name: Publish Module to PowerShell Gallery
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup PowerShell
+      uses: azure/powershell@v2
+      with:
+        azPSVersion: 'latest'
+        inlineScript: |
+          $PSVersionTable
+          
+    - name: Install required modules
+      shell: pwsh
+      run: |
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        Install-Module -Name PowerShellGet -Force -Scope CurrentUser
+        Install-Module -Name Pester -Force -Scope CurrentUser
+        Install-Module -Name Az.Accounts -Force -Scope CurrentUser
+        
+    - name: Update module version
+      shell: pwsh
+      run: |
+        # Determine version to use
+        if ('${{ github.event_name }}' -eq 'release') {
+          $version = '${{ github.event.release.tag_name }}' -replace '^v', ''
+          Write-Host "Using release version: $version"
+        } elseif ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+          $version = '${{ github.event.inputs.version }}'
+          Write-Host "Using manual version: $version"
+        } else {
+          throw "Unexpected event type: ${{ github.event_name }}"
+        }
+        
+        # Validate version format
+        if ($version -notmatch '^\d+\.\d+\.\d+$') {
+          throw "Invalid version format: $version. Expected format: x.y.z"
+        }
+        
+        # Update manifest file
+        $manifestPath = './AzureDevOps.Tools.psd1'
+        $content = Get-Content $manifestPath -Raw
+        $content = $content -replace "ModuleVersion = '[^']*'", "ModuleVersion = '$version'"
+        Set-Content $manifestPath $content
+        
+        Write-Host "Updated module version to: $version"
+        
+        # Verify the change
+        $manifest = Test-ModuleManifest -Path $manifestPath
+        Write-Host "Verified module version: $($manifest.Version)"
+        
+    - name: Run tests before publishing
+      shell: pwsh
+      run: |
+        Write-Host "Running tests before publishing..."
+        $config = New-PesterConfiguration
+        $config.Run.Path = './Tests'
+        $config.Filter.ExcludeTag = @('Integration')
+        $config.Output.Verbosity = 'Detailed'
+        $config.CodeCoverage.Enabled = $false
+        
+        $result = Invoke-Pester -Configuration $config -PassThru
+        
+        if ($result.FailedCount -gt 0) {
+          throw "Tests failed: $($result.FailedCount) failed, $($result.PassedCount) passed"
+        }
+        
+        Write-Host "✅ All tests passed: $($result.PassedCount) tests"
+        
+    - name: Publish to PowerShell Gallery
+      shell: pwsh
+      env:
+        POWERSHELL_GALLERY_API_KEY: ${{ secrets.POWERSHELL_GALLERY_API_KEY }}
+      run: |
+        if (-not $env:POWERSHELL_GALLERY_API_KEY) {
+          throw "POWERSHELL_GALLERY_API_KEY secret is not set"
+        }
+        
+        Write-Host "Publishing module to PowerShell Gallery..."
+        
+        $publishParams = @{
+          Path = '.'
+          NuGetApiKey = $env:POWERSHELL_GALLERY_API_KEY
+          Repository = 'PSGallery'
+          Verbose = $true
+        }
+        
+        # Add force parameter if specified
+        if ('${{ github.event.inputs.force }}' -eq 'true') {
+          $publishParams.Force = $true
+          Write-Host "Force publish enabled"
+        }
+        
+        try {
+          Publish-Module @publishParams
+          Write-Host "✅ Module published successfully to PowerShell Gallery"
+        } catch {
+          Write-Host "❌ Failed to publish module: $_"
+          throw
+        }
+        
+    - name: Create publication summary
+      shell: pwsh
+      run: |
+        $manifest = Test-ModuleManifest -Path './AzureDevOps.Tools.psd1'
+        
+        $summary = @"
+        # 📦 PowerShell Gallery Publication
+        
+        **Module:** $($manifest.Name)  
+        **Version:** $($manifest.Version)  
+        **Published:** $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC')  
+        **Gallery URL:** https://www.powershellgallery.com/packages/$($manifest.Name)/$($manifest.Version)
+        
+        ## Installation
+        ``````powershell
+        Install-Module -Name $($manifest.Name) -Scope CurrentUser
+        ``````
+        
+        ## Usage
+        ``````powershell
+        Import-Module $($manifest.Name)
+        Get-Command -Module $($manifest.Name)
+        ``````
+        "@
+        
+        Write-Host $summary
+        
+        # Write to GitHub step summary
+        $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append

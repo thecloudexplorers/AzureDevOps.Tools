@@ -1,0 +1,56 @@
+# PowerShell
+*.ps1xml
+PSGetModuleInfo.xml
+
+# Test Results
+TestResults.xml
+TestResults/
+**/TestResults/**
+coverage.xml
+*.coverage
+
+# Build artifacts
+bin/
+obj/
+out/
+
+# IDE files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+~*
+
+# PowerShell profile backup
+*_profile.ps1
+
+# Environment specific files
+.env
+.env.local
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+
+# Python (if any)
+__pycache__/
+*.pyc
+
+# Secrets and sensitive data
+secrets.json
+appsettings.local.json
+
+# Package output
+*.nupkg
+*.zip

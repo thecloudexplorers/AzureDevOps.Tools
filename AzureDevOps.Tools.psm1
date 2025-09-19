@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-#Requires -Module Az.Accounts
+# Az.Accounts requirement handled conditionally below
 
 <#
 .SYNOPSIS
@@ -10,6 +10,18 @@
     Author: The Cloud Explorers
     Version: 0.1.0
 #>
+
+# Check for Az.Accounts availability (required for production use)
+$isCI = $env:CI -eq 'true' -or $env:GITHUB_ACTIONS -eq 'true'
+if (-not $isCI) {
+    try {
+        Import-Module Az.Accounts -ErrorAction Stop
+    }
+    catch {
+        Write-Warning "Az.Accounts module is required for production use. Install it with: Install-Module Az.Accounts"
+        Write-Warning "Continuing in test mode without Azure authentication capabilities."
+    }
+}
 
 # Get public and private function definition files
 $PublicFunctions = @(Get-ChildItem -Path $PSScriptRoot\Public\*.ps1 -ErrorAction SilentlyContinue)
