@@ -69,10 +69,15 @@ jobs:
           echo "version=$fullVersion" >> $env:GITHUB_OUTPUT
           echo "Module version: $fullVersion"
 
-      - name: Run Pester Tests
+      - name: Install Test Dependencies
         shell: pwsh
         run: |
           Install-Module -Name Pester -Force -SkipPublisherCheck
+          Install-Module -Name Az.Accounts -Force -SkipPublisherCheck
+
+      - name: Run Pester Tests
+        shell: pwsh
+        run: |
           Invoke-Pester -Path ./Tests -Output Detailed
 
       - name: Publish to powershell gallery
