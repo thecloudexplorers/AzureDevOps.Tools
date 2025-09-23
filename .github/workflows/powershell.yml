@@ -11,7 +11,9 @@ name: PSScriptAnalyzer
 
 on:
   push:
-    branches: [ "main" ]
+    branches: 
+      - main
+      - 'users/wcamargo/**'
   pull_request:
     branches: [ "main" ]
   schedule:
