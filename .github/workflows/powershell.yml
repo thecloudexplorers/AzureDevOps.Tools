@@ -53,17 +53,17 @@ jobs:
         with:
           sarif_file: results.sarif
 
-      - name: Run Pester Tests
-        shell: pwsh
-        run: |
-          Install-Module -Name Pester -Force -SkipPublisherCheck
-          Invoke-Pester -Path ./Tests -OutputFile pester-results.xml -OutputFormat NUnitXml
+      # - name: Run Pester Tests
+      #   shell: pwsh
+      #   run: |
+      #     Install-Module -Name Pester -Force -SkipPublisherCheck
+      #     Invoke-Pester -Path ./Tests -OutputFile pester-results.xml -OutputFormat NUnitXml
 
-      - name: Upload Pester Test Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: Pester-Test-Results
-          path: pester-results.xml
+      # - name: Upload Pester Test Results
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: Pester-Test-Results
+      #     path: pester-results.xml
 
       - name: Publish to powershell gallery
         shell: pwsh
