@@ -166,13 +166,11 @@ function Connect-AzureDevOps {
             Write-Verbose "Using ClientId: $ResolvedClientId"
 
             # Check if we already have a valid connection (unless Force is specified)
-            $ExistingConnection = $script:AzureDevOpsConnection
+            $ExistingConnection = Get-AzureDevOpsConnectionStore
             if (-not $Force -and $ExistingConnection -and
                 $ExistingConnection.OrganizationUri -eq $ResolvedOrganizationUri.TrimEnd('/') -and
                 $ExistingConnection.TenantId -eq $ResolvedTenantId -and
-                $ExistingConnection.ClientId -eq $ResolvedClientId -and
-                $ExistingConnection.AccessToken -and
-                $ExistingConnection.TokenExpiry -gt (Get-Date).AddMinutes(5)) {
+                $ExistingConnection.ClientId -eq $ResolvedClientId) {
 
                 Write-Host "Using existing Azure DevOps connection to: $ResolvedOrganizationUri" -ForegroundColor Green
                 Write-Verbose "Connection still valid until: $($ExistingConnection.TokenExpiry)"
@@ -212,8 +210,8 @@ function Connect-AzureDevOps {
             # Calculate token expiry (Azure AD tokens typically last 1 hour)
             $TokenExpiry = (Get-Date).AddHours(1)
 
-            # Store connection information in script scope for other functions to use
-            $script:AzureDevOpsConnection = @{
+            # Store connection information securely using private function
+            $ConnectionData = @{
                 OrganizationUri = $ResolvedOrganizationUri.TrimEnd('/')
                 OrganizationName = $ConnectionTest.OrganizationName
                 Project = $ResolvedProject
@@ -232,19 +230,21 @@ function Connect-AzureDevOps {
                     ClientSecret = if ($null -eq $ClientSecret) { 'Environment Variable' } else { 'Parameter' }
                 }
             }
+            Set-AzureDevOpsConnectionStore -ConnectionInfo $ConnectionData
 
-            # Create return object
+            # Create return object using stored connection data
+            $StoredConnection = Get-AzureDevOpsConnectionStore
             $ConnectionInfo = [PSCustomObject]@{
                 Status = 'Connected'
-                OrganizationUri = $script:AzureDevOpsConnection.OrganizationUri
-                OrganizationName = $script:AzureDevOpsConnection.OrganizationName
-                Project = $script:AzureDevOpsConnection.Project
-                TenantId = $script:AzureDevOpsConnection.TenantId
-                ClientId = $script:AzureDevOpsConnection.ClientId
-                ProjectCount = $script:AzureDevOpsConnection.ProjectCount
-                ConnectedAt = $script:AzureDevOpsConnection.ConnectedAt
-                TokenExpiry = $script:AzureDevOpsConnection.TokenExpiry
-                ParameterSource = $script:AzureDevOpsConnection.ParameterSource
+                OrganizationUri = $StoredConnection.OrganizationUri
+                OrganizationName = $StoredConnection.OrganizationName
+                Project = $StoredConnection.Project
+                TenantId = $StoredConnection.TenantId
+                ClientId = $StoredConnection.ClientId
+                ProjectCount = $StoredConnection.ProjectCount
+                ConnectedAt = $StoredConnection.ConnectedAt
+                TokenExpiry = $StoredConnection.TokenExpiry
+                ParameterSource = $StoredConnection.ParameterSource
             }
 
             Write-Host "Successfully connected to Azure DevOps organization: $($ConnectionTest.OrganizationName)" -ForegroundColor Green
