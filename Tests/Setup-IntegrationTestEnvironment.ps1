@@ -129,4 +129,5 @@ foreach ($var in $EnvVars.GetEnumerator()) {
     } else {
         Write-Host "[OK] $($var.Key) is set." -ForegroundColor Green
     }
+
 }
