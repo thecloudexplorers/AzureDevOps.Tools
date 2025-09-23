@@ -23,12 +23,12 @@ on:
     types: completed
 
 permissions:
-  contents: read
+  contents: write # for creating tags and releases
 
 jobs:
   build:
     permissions:
-      contents: read # for actions/checkout to fetch code
+      contents: write # for creating tags and releases  
       security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
       actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
     name: PowerShellGalleryPublish
@@ -53,19 +53,65 @@ jobs:
         with:
           sarif_file: results.sarif
 
-      # - name: Run Pester Tests
-      #   shell: pwsh
-      #   run: |
-      #     Install-Module -Name Pester -Force -SkipPublisherCheck
-      #     Invoke-Pester -Path ./Tests -OutputFile pester-results.xml -OutputFormat NUnitXml
+      # Extract version from module manifest for tagging
+      - name: Get module version
+        id: get_version
+        shell: pwsh
+        run: |
+          $manifest = Import-PowerShellDataFile -Path './AzureDevOps.Tools.psd1'
+          $version = $manifest.ModuleVersion
+          $prerelease = $manifest.PrivateData.PSData.Prerelease
+          if ($prerelease) {
+            $fullVersion = "$version-$prerelease"
+          } else {
+            $fullVersion = $version
+          }
+          echo "version=$fullVersion" >> $env:GITHUB_OUTPUT
+          echo "Module version: $fullVersion"
 
-      # - name: Upload Pester Test Results
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: Pester-Test-Results
-      #     path: pester-results.xml
+      # Create git tag
+      - name: Create git tag
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Check if tag already exists
+          if git rev-parse "v${{ steps.get_version.outputs.version }}" >/dev/null 2>&1; then
+            echo "Tag v${{ steps.get_version.outputs.version }} already exists, skipping tag creation"
+          else
+            git tag -a "v${{ steps.get_version.outputs.version }}" -m "Release version ${{ steps.get_version.outputs.version }}"
+            git push origin "v${{ steps.get_version.outputs.version }}"
+            echo "Created and pushed tag v${{ steps.get_version.outputs.version }}"
+          fi
 
       - name: Publish to powershell gallery
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         shell: pwsh
         run: |
           Publish-Module -Path './' -NuGetApiKey ${{ secrets.POWERSHELL_GALLERY_API_KEY }}
+
+      # Create GitHub release
+      - name: Create GitHub release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if release already exists
+          if gh release view "v${{ steps.get_version.outputs.version }}" >/dev/null 2>&1; then
+            echo "Release v${{ steps.get_version.outputs.version }} already exists, skipping release creation"
+          else
+            gh release create "v${{ steps.get_version.outputs.version }}" \
+              --title "Release v${{ steps.get_version.outputs.version }}" \
+              --notes "Release of AzureDevOps.Tools PowerShell module version ${{ steps.get_version.outputs.version }}
+
+            ## Changes
+            - Published to PowerShell Gallery
+
+            ## Installation
+            \`\`\`powershell
+            Install-Module -Name AzureDevOps.Tools -Force
+            \`\`\`" \
+              ${{ contains(steps.get_version.outputs.version, '-') && '--prerelease' || '' }}
+            echo "Created release v${{ steps.get_version.outputs.version }}"
+          fi
