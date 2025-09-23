@@ -41,6 +41,10 @@
     # Private data to pass to the module specified in RootModule/ModuleToProcess
     PrivateData = @{
         PSData = @{
+
+            # Prerelease version of this module
+            Prerelease = 'alpha'
+
             # Tags applied to this module
             Tags = @('Azure', 'DevOps', 'Automation', 'CI/CD', 'Pipeline')
 

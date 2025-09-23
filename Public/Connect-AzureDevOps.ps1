@@ -36,7 +36,7 @@ function Connect-AzureDevOps {
     .EXAMPLE
         # Using explicit parameters
         $SecureSecret = ConvertTo-SecureString 'your-client-secret' -AsPlainText -Force
-        Connect-AzureDevOps -OrganizationUri 'https://dev.azure.com/myorg' -TenantId '12345678-1234-1234-1234-123456789012' -ClientId '87654321-4321-4321-4321-210987654321' -ClientSecret $SecureSecret
+        Connect-AzureDevOps -OrganizationUri 'https://dev.azure.com/myorg' -TenantId '00000000-0000-0000-0000-000000000000' -ClientId '00000000-0000-0000-0000-000000000000' -ClientSecret $SecureSecret
 
     .EXAMPLE
         # Using environment variables (automatically detected in Azure DevOps pipelines with service connections)
