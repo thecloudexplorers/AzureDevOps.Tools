@@ -111,3 +111,22 @@ Write-Host "`nTo check current values: " -NoNewline
 Write-Host ".\Setup-IntegrationTestEnvironment.ps1 -ShowCurrentValues" -ForegroundColor Cyan
 
 Write-Host "`nNote: Keep your client secrets secure and never commit them to source control!" -ForegroundColor Red
+
+# Validate environment variables populated from GitHub Actions secrets
+Write-Host "Validating environment variables..." -ForegroundColor Yellow
+
+$EnvVars = @{
+    'AZURE_DEVOPS_ORGANIZATION' = $env:AZURE_DEVOPS_ORGANIZATION
+    'AZURE_DEVOPS_PROJECT' = $env:AZURE_DEVOPS_PROJECT
+    'tenantId' = $env:tenantId
+    'servicePrincipalId' = $env:servicePrincipalId
+    'servicePrincipalKey' = if ($env:servicePrincipalKey) { '*' * 8 } else { $null }
+}
+
+foreach ($var in $EnvVars.GetEnumerator()) {
+    if (-not $var.Value) {
+        Write-Host "[ERROR] Missing value for $($var.Key). Ensure it is set in GitHub Actions secrets." -ForegroundColor Red
+    } else {
+        Write-Host "[OK] $($var.Key) is set." -ForegroundColor Green
+    }
+}

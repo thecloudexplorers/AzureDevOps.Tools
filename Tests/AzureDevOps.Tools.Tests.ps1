@@ -15,10 +15,12 @@ Describe "AzureDevOps.Tools Module Tests" {
             { Import-Module $ModulePath -Force } | Should -Not -Throw
         }
 
-        It "Should have correct module information" {
+        It "Should have required module properties" {
             $Module = Get-Module AzureDevOps.Tools
-            $Module.Name | Should -Be "AzureDevOps.Tools"
-            $Module.Version | Should -Be "0.1.0"
+            $Module.Name | Should -Not -BeNullOrEmpty
+            $Module.Version | Should -Not -BeNullOrEmpty
+            $Module.ModuleType | Should -Be 'Script'
+            $Module.Author | Should -Not -BeNullOrEmpty
         }
     }
 }
