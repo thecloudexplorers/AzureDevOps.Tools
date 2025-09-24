@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-#Requires -Module Az.Accounts
+# Note: Az.Accounts requirement removed as this module uses direct REST API calls
 
 <#
 .SYNOPSIS
