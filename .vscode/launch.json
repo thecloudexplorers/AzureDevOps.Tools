@@ -10,12 +10,31 @@
                 "-Path",
                 "${workspaceFolder}/Tests",
                 "-Output",
-                "Detailed"
+                "Detailed",
+                "-ExcludeTag",
+                "Integration"
             ],
             "cwd": "${workspaceFolder}",
             "createTemporaryIntegratedConsole": false,
             "preLaunchTask": null,
             "postDebugTask": null,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Run Unit Tests Only",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "Invoke-Pester",
+            "args": [
+                "-Path",
+                "${workspaceFolder}/Tests",
+                "-Output",
+                "Detailed",
+                "-ExcludeTag",
+                "Integration"
+            ],
+            "cwd": "${workspaceFolder}",
+            "createTemporaryIntegratedConsole": false,
             "console": "integratedTerminal"
         },
         {
@@ -52,7 +71,7 @@
             "name": "Debug Connect-AzureDevOps Function",
             "type": "PowerShell",
             "request": "launch",
-            "script": "${workspaceFolder}/Public/Connect-AzureDevOps.ps1",
+            "script": "${workspaceFolder}/Debug-ConnectAzureDevOps.ps1",
             "args": [],
             "cwd": "${workspaceFolder}",
             "createTemporaryIntegratedConsole": false,
@@ -68,6 +87,8 @@
                 "${workspaceFolder}/Tests",
                 "-Output",
                 "Detailed",
+                "-ExcludeTag",
+                "Integration",
                 "-CodeCoverage",
                 "${workspaceFolder}/Public/*.ps1",
                 "-CodeCoverageOutputFile",
@@ -87,10 +108,12 @@
             "args": [
                 "-Path",
                 "${workspaceFolder}/Tests",
-                "-TestName",
+                "-Name",
                 "*Parameter Validation*",
                 "-Output",
-                "Detailed"
+                "Detailed",
+                "-ExcludeTag",
+                "Integration"
             ],
             "cwd": "${workspaceFolder}",
             "createTemporaryIntegratedConsole": false,
@@ -114,17 +137,12 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Run All Tests (Unit + Integration)",
+            "name": "Setup Integration Test Configuration",
             "type": "PowerShell",
             "request": "launch",
-            "script": "Invoke-Pester",
+            "script": "${workspaceFolder}/Tests/Setup-IntegrationTestEnvironment.ps1",
             "args": [
-                "-Path",
-                "${workspaceFolder}/Tests",
-                "-Output",
-                "Detailed",
-                "-ExcludeTag",
-                "Skip"
+                "-Interactive"
             ],
             "cwd": "${workspaceFolder}",
             "createTemporaryIntegratedConsole": false,
