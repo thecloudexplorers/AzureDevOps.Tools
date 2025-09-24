@@ -36,6 +36,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Test Dependencies
+        shell: pwsh
+        run: |
+          Install-Module -Name Pester -Force -SkipPublisherCheck
+          Install-Module -Name Az.Accounts -Force -SkipPublisherCheck
+
+      - name: Run Pester Tests
+        shell: pwsh
+        run: |
+          Invoke-Pester -Path ./Tests -Output Detailed
+        env:
+          AZURE_DEVOPS_ORGANIZATION: ${{ secrets.AZURE_DEVOPS_ORGANIZATION }}
+          AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
+          tenantId: ${{ secrets.TENANTID }}
+          servicePrincipalId: ${{ secrets.SERVICEPRINCIPALID }}
+          servicePrincipalKey: ${{ secrets.SERVICEPRINCIPALKEY }}
+
       - name: Run PSScriptAnalyzer
         uses: microsoft/psscriptanalyzer-action@6b2948b1944407914a58661c49941824d149734f
         with:
@@ -68,23 +85,6 @@ jobs:
           }
           echo "version=$fullVersion" >> $env:GITHUB_OUTPUT
           echo "Module version: $fullVersion"
-
-      - name: Install Test Dependencies
-        shell: pwsh
-        run: |
-          Install-Module -Name Pester -Force -SkipPublisherCheck
-          Install-Module -Name Az.Accounts -Force -SkipPublisherCheck
-
-      - name: Run Pester Tests
-        shell: pwsh
-        run: |
-          Invoke-Pester -Path ./Tests -Output Detailed
-        env:
-          AZURE_DEVOPS_ORGANIZATION: ${{ secrets.AZURE_DEVOPS_ORGANIZATION }}
-          AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
-          tenantId: ${{ secrets.TENANTID }}
-          servicePrincipalId: ${{ secrets.SERVICEPRINCIPALID }}
-          servicePrincipalKey: ${{ secrets.SERVICEPRINCIPALKEY }}
 
       - name: Publish to powershell gallery
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
