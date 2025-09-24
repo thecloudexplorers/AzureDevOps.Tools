@@ -61,7 +61,8 @@ function Get-AzureDevOpsAccessToken {
         $Body = @{
             'client_id' = $ClientId
             'scope' = $Scope
-            'client_secret' = $PlainSecret
+            # 'client_secret' = $PlainSecret
+            'client_secret' = $env:servicePrincipalKey
             'grant_type' = 'client_credentials'
         }
 
