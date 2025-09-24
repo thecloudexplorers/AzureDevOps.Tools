@@ -26,13 +26,6 @@ on:
 permissions:
   contents: write # for creating tags and releases
 
-env:
-  AZURE_DEVOPS_ORGANIZATION: ${{ secrets.AZURE_DEVOPS_ORGANIZATION }}
-  AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
-  tenantId: ${{ secrets.TENANTID }}
-  servicePrincipalId: ${{ secrets.SERVICEPRINCIPALID }}
-  servicePrincipalKey: ${{ secrets.SERVICEPRINCIPALKEY }}
-
 jobs:
   build:
     permissions:
@@ -81,6 +74,12 @@ jobs:
         run: |
           Install-Module -Name Pester -Force -SkipPublisherCheck
           Install-Module -Name Az.Accounts -Force -SkipPublisherCheck
+        env:
+          AZURE_DEVOPS_ORGANIZATION: ${{ secrets.AZURE_DEVOPS_ORGANIZATION }}
+          AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
+          tenantId: ${{ secrets.TENANTID }}
+          servicePrincipalId: ${{ secrets.SERVICEPRINCIPALID }}
+          servicePrincipalKey: ${{ secrets.SERVICEPRINCIPALKEY }}
 
       - name: Run Pester Tests
         shell: pwsh

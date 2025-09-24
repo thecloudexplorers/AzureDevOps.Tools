@@ -1,146 +1,148 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "Run All Pester Tests",
-            "type": "PowerShell",
-            "request": "launch",
-            "script": "Invoke-Pester",
-            "args": [
-                "-Path",
-                "${workspaceFolder}/Tests",
-                "-Output",
-                "Detailed"
-            ],
-            "cwd": "${workspaceFolder}",
-            "createTemporaryIntegratedConsole": false,
-            "preLaunchTask": null,
-            "postDebugTask": null,
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Run Module Tests",
-            "type": "PowerShell",
-            "request": "launch",
-            "script": "Invoke-Pester",
-            "args": [
-                "-Path",
-                "${workspaceFolder}/Tests/AzureDevOps.Tools.Tests.ps1",
-                "-Output",
-                "Detailed"
-            ],
-            "cwd": "${workspaceFolder}",
-            "createTemporaryIntegratedConsole": false,
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Run Connect-AzureDevOps Tests",
-            "type": "PowerShell",
-            "request": "launch",
-            "script": "Invoke-Pester",
-            "args": [
-                "-Path",
-                "${workspaceFolder}/Tests/Connect-AzureDevOps.Tests.ps1",
-                "-Output",
-                "Detailed"
-            ],
-            "cwd": "${workspaceFolder}",
-            "createTemporaryIntegratedConsole": false,
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Debug Connect-AzureDevOps Function",
-            "type": "PowerShell",
-            "request": "launch",
-            "script": "${workspaceFolder}/Public/Connect-AzureDevOps.ps1",
-            "args": [],
-            "cwd": "${workspaceFolder}",
-            "createTemporaryIntegratedConsole": false,
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Run All Tests with Coverage",
-            "type": "PowerShell",
-            "request": "launch",
-            "script": "Invoke-Pester",
-            "args": [
-                "-Path",
-                "${workspaceFolder}/Tests",
-                "-Output",
-                "Detailed",
-                "-CodeCoverage",
-                "${workspaceFolder}/Public/*.ps1",
-                "-CodeCoverageOutputFile",
-                "${workspaceFolder}/coverage.xml",
-                "-CodeCoverageOutputFileFormat",
-                "JaCoCo"
-            ],
-            "cwd": "${workspaceFolder}",
-            "createTemporaryIntegratedConsole": false,
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Test Specific Function Pattern",
-            "type": "PowerShell",
-            "request": "launch",
-            "script": "Invoke-Pester",
-            "args": [
-                "-Path",
-                "${workspaceFolder}/Tests",
-                "-TestName",
-                "*Parameter Validation*",
-                "-Output",
-                "Detailed"
-            ],
-            "cwd": "${workspaceFolder}",
-            "createTemporaryIntegratedConsole": false,
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Run Integration Tests",
-            "type": "PowerShell",
-            "request": "launch",
-            "script": "Invoke-Pester",
-            "args": [
-                "-Path",
-                "${workspaceFolder}/Tests/Connect-AzureDevOps.Integration.Tests.ps1",
-                "-Output",
-                "Detailed",
-                "-Tag",
-                "Integration"
-            ],
-            "cwd": "${workspaceFolder}",
-            "createTemporaryIntegratedConsole": false,
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Run All Tests (Unit + Integration)",
-            "type": "PowerShell",
-            "request": "launch",
-            "script": "Invoke-Pester",
-            "args": [
-                "-Path",
-                "${workspaceFolder}/Tests",
-                "-Output",
-                "Detailed",
-                "-ExcludeTag",
-                "Skip"
-            ],
-            "cwd": "${workspaceFolder}",
-            "createTemporaryIntegratedConsole": false,
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "Interactive Test Session",
-            "type": "PowerShell",
-            "request": "launch",
-            "script": "",
-            "args": [],
-            "cwd": "${workspaceFolder}",
-            "createTemporaryIntegratedConsole": false,
-            "console": "integratedTerminal",
-            "preLaunchTask": null,
-            "postDebugTask": null
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Set up Integration Test Environment Variables",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "${workspaceFolder}/.vscode/Setup-IntegrationTestEnvironment.ps1",
+      "cwd": "${cwd}"
+    },
+    {
+      "name": "Run All Pester Tests",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "Invoke-Pester",
+      "args": ["-Path", "${workspaceFolder}/Tests", "-Output", "Detailed"],
+      "cwd": "${workspaceFolder}",
+      "createTemporaryIntegratedConsole": false,
+      "preLaunchTask": null,
+      "postDebugTask": null,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run Module Tests",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "Invoke-Pester",
+      "args": [
+        "-Path",
+        "${workspaceFolder}/Tests/AzureDevOps.Tools.Tests.ps1",
+        "-Output",
+        "Detailed"
+      ],
+      "cwd": "${workspaceFolder}",
+      "createTemporaryIntegratedConsole": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run Connect-AzureDevOps Tests",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "Invoke-Pester",
+      "args": [
+        "-Path",
+        "${workspaceFolder}/Tests/Connect-AzureDevOps.Tests.ps1",
+        "-Output",
+        "Detailed"
+      ],
+      "cwd": "${workspaceFolder}",
+      "createTemporaryIntegratedConsole": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Debug Connect-AzureDevOps Function",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "${workspaceFolder}/Public/Connect-AzureDevOps.ps1",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "createTemporaryIntegratedConsole": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run All Tests with Coverage",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "Invoke-Pester",
+      "args": [
+        "-Path",
+        "${workspaceFolder}/Tests",
+        "-Output",
+        "Detailed",
+        "-CodeCoverage",
+        "${workspaceFolder}/Public/*.ps1",
+        "-CodeCoverageOutputFile",
+        "${workspaceFolder}/coverage.xml",
+        "-CodeCoverageOutputFileFormat",
+        "JaCoCo"
+      ],
+      "cwd": "${workspaceFolder}",
+      "createTemporaryIntegratedConsole": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Test Specific Function Pattern",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "Invoke-Pester",
+      "args": [
+        "-Path",
+        "${workspaceFolder}/Tests",
+        "-TestName",
+        "*Parameter Validation*",
+        "-Output",
+        "Detailed"
+      ],
+      "cwd": "${workspaceFolder}",
+      "createTemporaryIntegratedConsole": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run Integration Tests",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "Invoke-Pester",
+      "args": [
+        "-Path",
+        "${workspaceFolder}/Tests/Connect-AzureDevOps.Integration.Tests.ps1",
+        "-Output",
+        "Detailed",
+        "-Tag",
+        "Integration"
+      ],
+      "cwd": "${workspaceFolder}",
+      "createTemporaryIntegratedConsole": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run All Tests (Unit + Integration)",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "Invoke-Pester",
+      "args": [
+        "-Path",
+        "${workspaceFolder}/Tests",
+        "-Output",
+        "Detailed",
+        "-ExcludeTag",
+        "Skip"
+      ],
+      "cwd": "${workspaceFolder}",
+      "createTemporaryIntegratedConsole": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Interactive Test Session",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "createTemporaryIntegratedConsole": false,
+      "console": "integratedTerminal",
+      "preLaunchTask": null,
+      "postDebugTask": null
+    }
+  ]
 }

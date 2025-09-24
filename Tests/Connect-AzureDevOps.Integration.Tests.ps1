@@ -34,18 +34,6 @@ Describe "Connect-AzureDevOps Integration Tests" -Tag "Integration" {
             }
         }
 
-        # Also run the test environment setup if available
-        $SetupPath = Join-Path $PSScriptRoot "Setup-IntegrationTestEnvironment.ps1"
-        if (Test-Path $SetupPath) {
-            Write-Host "Running integration test setup script..." -ForegroundColor Cyan
-            try {
-                . $SetupPath -ShowCurrentValues -ErrorAction SilentlyContinue
-            }
-            catch {
-                Write-Warning "Failed to run setup script: $_"
-            }
-        }
-
         # Check if required environment variables are available
         $RequiredEnvVars = @()
 
