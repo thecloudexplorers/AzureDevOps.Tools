@@ -14,14 +14,14 @@ The module uses a core authentication pattern based on OAuth2 client credentials
 
 ## Authentication Flow
 
-1. `Connect-AzureDevOps` (Public) handles parameter validation and environment detection
+1. `Connect-AzureDevOps` (Public) handles parameter validation and explicit authentication
 2. `Get-AzureDevOpsAccessToken` (Private) manages the OAuth2 token acquisition
 3. `Test-AzureDevOpsConnection` (Private) validates the connection by making a test API call
 
-The module supports two authentication patterns:
+The module uses explicit parameter authentication:
 
-- Direct parameters: Explicitly providing organization URI, tenant ID, client ID, and client secret
-- Environment variables: Auto-detecting from Azure DevOps pipeline service connection environment variables (AZURE_DEVOPS_ORGANIZATION, tenantId, servicePrincipalId, servicePrincipalKey)
+- All parameters must be provided explicitly: organization URI, tenant ID, client ID, and client secret
+- No environment variable fallback - all authentication data must be passed as parameters
 
 ## Development Workflows
 
@@ -41,8 +41,19 @@ Import-Module ./AzureDevOps.Tools.psd1 -Force
 # Unit tests only (parameter validation, mocks)
 Invoke-Pester ./Tests -ExcludeTag Integration
 
-# Integration tests (requires real Azure credentials)
+# Integration tests (requires real Azure credentials via configuration)
+# Option 1: Using configuration file
+./Tests/Setup-IntegrationTestEnvironment.ps1 -Interactive
 Invoke-Pester ./Tests/Connect-AzureDevOps.Integration.Tests.ps1
+
+# Option 2: Using environment variables with Pester configuration
+$PesterConfig = @{
+    OrganizationUri = $env:AZURE_DEVOPS_ORGANIZATION
+    TenantId = $env:tenantId
+    ClientId = $env:servicePrincipalId
+    ClientSecretPlain = $env:servicePrincipalKey
+}
+Invoke-Pester ./Tests/Connect-AzureDevOps.Integration.Tests.ps1 -Configuration @{ Data = $PesterConfig }
 
 # All tests
 Invoke-Pester ./Tests
@@ -255,7 +266,7 @@ This module follows these key design principles:
 
    - Common code extracted to private functions (e.g., `Get-AzureDevOpsAccessToken`)
    - Parameter validation logic centralized in public functions
-   - Reuse environment variable discovery patterns
+   - Consistent parameter patterns across functions
 
 4. **SOLID**:
    - **Single Responsibility**: Each function does one thing well (connect, get token, test)
