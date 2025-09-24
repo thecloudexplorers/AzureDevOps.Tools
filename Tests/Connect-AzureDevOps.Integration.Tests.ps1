@@ -6,7 +6,25 @@
 
 .DESCRIPTION
     These tests require actual Azure credentials to be provided via Pester configuration.
-    Create a PesterConfiguration.psd1 file or provide credentials via test data configuration.
+    Configuration should be provided when invoking Pester with environment variables.
+
+.EXAMPLE
+    # Run integration tests with environment variables
+    $env:AZURE_DEVOPS_ORGANIZATION = 'https://dev.azure.com/your-org'
+    $env:tenantId = 'your-tenant-id-guid'
+    $env:servicePrincipalId = 'your-client-id-guid'
+    $env:servicePrincipalKey = 'your-client-secret'
+    $env:AZURE_DEVOPS_PROJECT = 'your-project' # Optional
+    
+    $PesterConfig = @{
+        OrganizationUri = $env:AZURE_DEVOPS_ORGANIZATION
+        TenantId = $env:tenantId
+        ClientId = $env:servicePrincipalId
+        ClientSecretPlain = $env:servicePrincipalKey
+        Project = $env:AZURE_DEVOPS_PROJECT
+    }
+    
+    Invoke-Pester -Path ./Tests/Connect-AzureDevOps.Integration.Tests.ps1 -Tag Integration -Configuration @{ Data = $PesterConfig }
 
 .NOTES
     Run these tests only when you have valid Azure credentials configured.
@@ -18,16 +36,27 @@ Describe "Connect-AzureDevOps Integration Tests" -Tag "Integration" {
         $ModulePath = Join-Path $PSScriptRoot ".." "AzureDevOps.Tools.psd1"
         Import-Module $ModulePath -Force
         
-        # Load test data
-        $TestDataPath = Join-Path $PSScriptRoot "TestData.psd1"
-        $script:TestData = Import-PowerShellDataFile -Path $TestDataPath
-        $script:IntegrationTestData = $script:TestData.IntegrationTests
+        # Get integration test configuration from Pester Data or environment variables
+        $script:IntegrationTestData = @{}
         
-        # Try to load integration test configuration if it exists
-        $IntegrationConfigPath = Join-Path $PSScriptRoot "IntegrationTestConfig.psd1"
-        if (Test-Path $IntegrationConfigPath) {
-            $IntegrationConfig = Import-PowerShellDataFile -Path $IntegrationConfigPath
-            $script:IntegrationTestData = $IntegrationConfig
+        # Check if configuration was provided via Pester Data parameter
+        if ($PesterPreference.Data -and $PesterPreference.Data.GetType() -eq [hashtable]) {
+            $script:IntegrationTestData = $PesterPreference.Data
+            Write-Host "Using integration test configuration from Pester Data parameter" -ForegroundColor Green
+        }
+        # Fallback to environment variables if no Pester Data provided
+        else {
+            $script:IntegrationTestData = @{
+                OrganizationUri = $env:AZURE_DEVOPS_ORGANIZATION
+                TenantId = $env:tenantId
+                ClientId = $env:servicePrincipalId
+                ClientSecretPlain = $env:servicePrincipalKey
+                Project = $env:AZURE_DEVOPS_PROJECT
+            }
+            
+            if ($env:AZURE_DEVOPS_ORGANIZATION -or $env:tenantId -or $env:servicePrincipalId -or $env:servicePrincipalKey) {
+                Write-Host "Using integration test configuration from environment variables" -ForegroundColor Green
+            }
         }
 
         # Check if required credentials are available
@@ -46,7 +75,9 @@ Describe "Connect-AzureDevOps Integration Tests" -Tag "Integration" {
 
         if ($script:SkipIntegrationTests) {
             Write-Host "Skipping integration tests. Missing configuration fields: $($RequiredFields -join ', ')" -ForegroundColor Yellow
-            Write-Host "To run integration tests, create Tests/IntegrationTestConfig.psd1 with real credentials" -ForegroundColor Yellow
+            Write-Host "To run integration tests:" -ForegroundColor Yellow
+            Write-Host "1. Set environment variables (AZURE_DEVOPS_ORGANIZATION, tenantId, servicePrincipalId, servicePrincipalKey)" -ForegroundColor Cyan
+            Write-Host "2. Or provide configuration via Pester Data parameter" -ForegroundColor Cyan
         }
         else {
             Write-Host "Integration test configuration is ready!" -ForegroundColor Green

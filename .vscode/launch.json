@@ -137,12 +137,31 @@
             "console": "integratedTerminal"
         },
         {
+            "name": "Run Integration Tests with Config",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "Invoke-Pester",
+            "args": [
+                "-Path",
+                "${workspaceFolder}/Tests/Connect-AzureDevOps.Integration.Tests.ps1",
+                "-Output",
+                "Detailed",
+                "-Tag",
+                "Integration",
+                "-Configuration",
+                "@{ Data = @{ OrganizationUri = $env:AZURE_DEVOPS_ORGANIZATION; TenantId = $env:tenantId; ClientId = $env:servicePrincipalId; ClientSecretPlain = $env:servicePrincipalKey; Project = $env:AZURE_DEVOPS_PROJECT } }"
+            ],
+            "cwd": "${workspaceFolder}",
+            "createTemporaryIntegratedConsole": false,
+            "console": "integratedTerminal"
+        },
+        {
             "name": "Setup Integration Test Configuration",
             "type": "PowerShell",
             "request": "launch",
             "script": "${workspaceFolder}/Tests/Setup-IntegrationTestEnvironment.ps1",
             "args": [
-                "-Interactive"
+                "-ShowCurrentValues"
             ],
             "cwd": "${workspaceFolder}",
             "createTemporaryIntegratedConsole": false,
