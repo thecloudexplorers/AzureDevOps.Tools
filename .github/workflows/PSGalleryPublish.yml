@@ -74,17 +74,17 @@ jobs:
         run: |
           Install-Module -Name Pester -Force -SkipPublisherCheck
           Install-Module -Name Az.Accounts -Force -SkipPublisherCheck
+
+      - name: Run Pester Tests
+        shell: pwsh
+        run: |
+          Invoke-Pester -Path ./Tests -Output Detailed
         env:
           AZURE_DEVOPS_ORGANIZATION: ${{ secrets.AZURE_DEVOPS_ORGANIZATION }}
           AZURE_DEVOPS_PROJECT: ${{ secrets.AZURE_DEVOPS_PROJECT }}
           tenantId: ${{ secrets.TENANTID }}
           servicePrincipalId: ${{ secrets.SERVICEPRINCIPALID }}
           servicePrincipalKey: ${{ secrets.SERVICEPRINCIPALKEY }}
-
-      - name: Run Pester Tests
-        shell: pwsh
-        run: |
-          Invoke-Pester -Path ./Tests -Output Detailed
 
       - name: Publish to powershell gallery
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
