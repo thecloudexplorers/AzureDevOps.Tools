@@ -18,7 +18,7 @@ Describe "AzureDevOps.Tools Module Tests" {
         It "Should have correct module information" {
             $Module = Get-Module AzureDevOps.Tools
             $Module.Name | Should -Be "AzureDevOps.Tools"
-            $Module.Version | Should -Be "0.1.0"
+            $Module.Version | Should -Be "0.2.0"
         }
     }
 }

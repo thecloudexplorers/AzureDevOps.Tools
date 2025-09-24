@@ -1,113 +1,151 @@
 <#
 .SYNOPSIS
-    Setup script for integration test environment variables
+    Setup script for integration test configuration
 
 .DESCRIPTION
-    This script helps you configure the required environment variables for running
-    Connect-AzureDevOps integration tests. You can either set them in your PowerShell
-    profile or run this script before running integration tests.
+    This script helps you configure the required test data for running
+    Connect-AzureDevOps integration tests. It creates an IntegrationTestConfig.psd1 file
+    with your Azure DevOps and service principal credentials.
 
 .EXAMPLE
-    # Set environment variables for current session
-    .\Setup-IntegrationTestEnvironment.ps1
+    # Create integration test configuration interactively
+    .\Setup-IntegrationTestEnvironment.ps1 -Interactive
 
 .EXAMPLE
-    # Add to your PowerShell profile for persistent settings
-    # Edit: $PROFILE (or $PROFILE.AllUsersAllHosts for all users)
-    # Add the contents of this script
+    # Show current configuration status
+    .\Setup-IntegrationTestEnvironment.ps1 -ShowCurrentConfig
 
 .NOTES
-    Required environment variables for integration tests:
-    - AZURE_DEVOPS_ORGANIZATION
-    - tenantId
-    - servicePrincipalId
-    - servicePrincipalKey
-    - AZURE_DEVOPS_PROJECT (optional)
+    Required configuration for integration tests:
+    - OrganizationUri: Your Azure DevOps organization URI
+    - TenantId: Azure AD tenant ID
+    - ClientId: Service principal client ID
+    - ClientSecretPlain: Service principal client secret
+    - Project: (Optional) Default project name
 #>
 
 [CmdletBinding()]
 param(
-    [Parameter(HelpMessage = "Set to true to display current environment variable values")]
-    [switch]$ShowCurrentValues,
+    [Parameter(HelpMessage = "Set to true to display current configuration values")]
+    [switch]$ShowCurrentConfig,
 
-    [Parameter(HelpMessage = "Set to true to prompt for values interactively")]
+    [Parameter(HelpMessage = "Set to true to create configuration interactively")]
     [switch]$Interactive
 )
 
-Write-Host "Azure DevOps Integration Test Environment Setup" -ForegroundColor Green
+Write-Host "Azure DevOps Integration Test Configuration Setup" -ForegroundColor Green
 Write-Host "===============================================" -ForegroundColor Green
 
-if ($ShowCurrentValues) {
-    Write-Host "`nCurrent Environment Variables:" -ForegroundColor Yellow
+$ConfigPath = Join-Path $PSScriptRoot "IntegrationTestConfig.psd1"
+$ExampleConfigPath = Join-Path $PSScriptRoot "IntegrationTestConfig.example.psd1"
 
-    $EnvVars = @{
-        'AZURE_DEVOPS_ORGANIZATION' = $env:AZURE_DEVOPS_ORGANIZATION
-        'AZURE_DEVOPS_PROJECT' = $env:AZURE_DEVOPS_PROJECT
-        'tenantId' = $env:tenantId
-        'servicePrincipalId' = $env:servicePrincipalId
-        'servicePrincipalKey' = if ($env:servicePrincipalKey) { '*' * 8 } else { $null }
+if ($ShowCurrentConfig) {
+    Write-Host "`nCurrent Configuration Status:" -ForegroundColor Yellow
+
+    if (Test-Path $ConfigPath) {
+        try {
+            $Config = Import-PowerShellDataFile -Path $ConfigPath
+            
+            $ConfigStatus = @{
+                'OrganizationUri' = $Config.OrganizationUri
+                'TenantId' = $Config.TenantId
+                'ClientId' = $Config.ClientId
+                'ClientSecretPlain' = if ($Config.ClientSecretPlain) { '*' * 8 } else { $null }
+                'Project' = $Config.Project
+            }
+
+            foreach ($item in $ConfigStatus.GetEnumerator()) {
+                $value = if ($item.Value) { $item.Value } else { "(not set)" }
+                $status = if ($item.Value) { "✓" } else { "✗" }
+                Write-Host "  $status $($item.Key): $value" -ForegroundColor $(if ($item.Value) { "Green" } else { "Red" })
+            }
+        }
+        catch {
+            Write-Host "  Error reading configuration file: $_" -ForegroundColor Red
+        }
     }
-
-    foreach ($var in $EnvVars.GetEnumerator()) {
-        $value = if ($var.Value) { $var.Value } else { "(not set)" }
-        Write-Host "  $($var.Key): $value" -ForegroundColor Cyan
+    else {
+        Write-Host "  No configuration file found at: $ConfigPath" -ForegroundColor Red
     }
     return
 }
 
 if ($Interactive) {
-    Write-Host "`nInteractive Setup:" -ForegroundColor Yellow
-    Write-Host "Please provide the following values (press Enter to skip):`n"
-
-    $org = Read-Host "Azure DevOps Organization URI (https://dev.azure.com/yourorg)"
-    if ($org) { $env:AZURE_DEVOPS_ORGANIZATION = $org }
-
-    $project = Read-Host "Azure DevOps Project Name (optional)"
-    if ($project) { $env:AZURE_DEVOPS_PROJECT = $project }
-
-    $tenantId = Read-Host "Azure Tenant ID (GUID)"
-    if ($tenantId) { $env:tenantId = $tenantId }
-
-    $clientId = Read-Host "Service Principal Client ID (GUID)"
-    if ($clientId) { $env:servicePrincipalId = $clientId }
-
-    $clientSecret = Read-Host "Service Principal Client Secret" -AsSecureString
-    if ($clientSecret -and $clientSecret.Length -gt 0) {
-        $env:servicePrincipalKey = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($clientSecret))
+    Write-Host "`nInteractive Configuration Setup:" -ForegroundColor Yellow
+    
+    Write-Host "`nThis will create a configuration file with your Azure DevOps credentials."
+    Write-Host "The file will be saved as: $ConfigPath"
+    Write-Host "Make sure this file is not committed to source control!" -ForegroundColor Red
+    
+    $Continue = Read-Host "`nDo you want to continue? (y/N)"
+    if ($Continue -notmatch '^[yY]') {
+        Write-Host "Configuration setup cancelled." -ForegroundColor Yellow
+        return
     }
 
-    $subscriptionId = Read-Host "Azure Subscription ID (GUID)"
-    if ($subscriptionId) { $env:ARM_SUBSCRIPTION_ID = $subscriptionId }
+    # Collect configuration values
+    $OrgUri = Read-Host "`nEnter your Azure DevOps organization URI (e.g., https://dev.azure.com/myorg)"
+    $TenantId = Read-Host "Enter your Azure AD tenant ID (GUID)"
+    $ClientId = Read-Host "Enter your service principal client ID (GUID)"
+    $ClientSecret = Read-Host "Enter your service principal client secret" -MaskInput
+    $Project = Read-Host "Enter default project name (optional, press Enter to skip)"
 
-    Write-Host "`nEnvironment variables set for current session." -ForegroundColor Green
+    # Validate required fields
+    if ([string]::IsNullOrWhiteSpace($OrgUri) -or 
+        [string]::IsNullOrWhiteSpace($TenantId) -or 
+        [string]::IsNullOrWhiteSpace($ClientId) -or 
+        [string]::IsNullOrWhiteSpace($ClientSecret)) {
+        Write-Host "`nError: All required fields must be provided." -ForegroundColor Red
+        return
+    }
+
+    # Create configuration hashtable
+    $ConfigContent = @"
+@{
+    # Integration test configuration for Connect-AzureDevOps
+    # DO NOT commit this file to source control!
+    
+    # Your Azure DevOps organization URI
+    OrganizationUri = '$OrgUri'
+    
+    # Azure AD tenant ID where your service principal is registered
+    TenantId = '$TenantId'
+    
+    # Service principal (application) client ID
+    ClientId = '$ClientId'
+    
+    # Service principal client secret (plain text - will be converted to SecureString)
+    ClientSecretPlain = '$ClientSecret'
+    
+    # Optional: Default project name for scoped operations
+    Project = '$Project'
+}
+"@
+
+    try {
+        $ConfigContent | Out-File -FilePath $ConfigPath -Encoding UTF8
+        Write-Host "`nConfiguration saved successfully to: $ConfigPath" -ForegroundColor Green
+        Write-Host "You can now run integration tests with: Invoke-Pester ./Tests/Connect-AzureDevOps.Integration.Tests.ps1" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "`nError saving configuration: $_" -ForegroundColor Red
+    }
     return
 }
 
-# Example/Template values - REPLACE WITH YOUR ACTUAL VALUES
-Write-Host "`nTo set up integration test environment, configure these variables:" -ForegroundColor Yellow
-
-Write-Host @"
-
-# Azure DevOps Environment Variables
-`$env:AZURE_DEVOPS_ORGANIZATION = 'https://dev.azure.com/yourorg'
-`$env:AZURE_DEVOPS_PROJECT = 'YourProject'                    # Optional
-`$env:tenantId = 'your-tenant-id-guid'
-`$env:servicePrincipalId = 'your-client-id-guid'
-`$env:servicePrincipalKey = 'your-client-secret'
-`$env:ARM_SUBSCRIPTION_ID = 'your-subscription-id-guid'
-
-"@ -ForegroundColor Cyan
-
-Write-Host "How to use:" -ForegroundColor Yellow
-Write-Host "1. Copy the variables above to your PowerShell profile: " -NoNewline
-Write-Host "`$PROFILE" -ForegroundColor Cyan
-Write-Host "2. Or run: " -NoNewline
+# Default behavior - show instructions
+Write-Host "`nTo set up integration tests, you need to create a configuration file with your Azure credentials."
+Write-Host "`nAvailable options:"
+Write-Host "1. Run interactively: " -NoNewline
 Write-Host ".\Setup-IntegrationTestEnvironment.ps1 -Interactive" -ForegroundColor Cyan
-Write-Host "3. Or set them manually in your current session"
-Write-Host "4. Then run: " -NoNewline
+Write-Host "2. Copy example file: " -NoNewline
+Write-Host "Copy-Item $ExampleConfigPath $ConfigPath" -ForegroundColor Cyan
+Write-Host "   Then edit: " -NoNewline
+Write-Host "$ConfigPath" -ForegroundColor Cyan
+Write-Host "3. Check current config: " -NoNewline
+Write-Host ".\Setup-IntegrationTestEnvironment.ps1 -ShowCurrentConfig" -ForegroundColor Cyan
+
+Write-Host "`nAfter configuration, run tests with: " -NoNewline
 Write-Host "Invoke-Pester ./Tests/Connect-AzureDevOps.Integration.Tests.ps1" -ForegroundColor Cyan
 
-Write-Host "`nTo check current values: " -NoNewline
-Write-Host ".\Setup-IntegrationTestEnvironment.ps1 -ShowCurrentValues" -ForegroundColor Cyan
-
-Write-Host "`nNote: Keep your client secrets secure and never commit them to source control!" -ForegroundColor Red
+Write-Host "`nNote: Keep your credentials secure and never commit IntegrationTestConfig.psd1 to source control!" -ForegroundColor Red
