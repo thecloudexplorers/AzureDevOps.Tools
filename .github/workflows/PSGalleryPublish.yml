@@ -35,6 +35,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Run Pester tests
+      - name: Run Pester Tests
+        shell: pwsh
+        run: |
+          Invoke-Pester -Path './Tests' -Output Detailed -PassThru |
+          ForEach-Object { $_ | Select-Object -Property Name, Result, Duration } |
+          ConvertTo-Json -Depth 10 |
+          Out-File -FilePath pester-results.json
+
+      # Upload Pester test results
+      - name: Upload Pester Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: pester-results
+          path: pester-results.json
+
       - name: Run PSScriptAnalyzer
         uses: microsoft/psscriptanalyzer-action@6b2948b1944407914a58661c49941824d149734f
         with:
@@ -51,19 +67,6 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: results.sarif
-
-      # Run Pester tests
-      - name: Run Pester Tests
-        shell: pwsh
-        run: |
-          Invoke-Pester -Path './Tests' -Output Detailed -PassThru | ConvertTo-Json -Depth 10 | Out-File -FilePath pester-results.json
-
-      # Upload Pester test results
-      - name: Upload Pester Test Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: pester-results
-          path: pester-results.json
 
       # Extract version from module manifest for tagging
       - name: Get module version
