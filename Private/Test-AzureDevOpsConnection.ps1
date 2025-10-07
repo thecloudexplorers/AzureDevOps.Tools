@@ -1,3 +1,5 @@
+#Requires -PSEdition Core
+
 function Test-AzureDevOpsConnection {
     <#
     .SYNOPSIS
@@ -23,13 +25,20 @@ function Test-AzureDevOpsConnection {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$OrganizationUri,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$AccessToken
     )
 
-    try {
+    begin {
+        Write-Verbose "Initializing Azure DevOps connection test"
+    }
+
+    process {
+        try {
         # Prepare headers for API call
         $Headers = @{
             'Authorization' = "Bearer $AccessToken"
@@ -53,6 +62,7 @@ function Test-AzureDevOpsConnection {
             OrganizationName = $OrgName
             OrganizationUri = $OrganizationUri
             ProjectCount = $Response.count
+            Project = $Response.value.name
             ApiVersion = '7.1'
             TestTimestamp = Get-Date
         }
@@ -70,11 +80,16 @@ function Test-AzureDevOpsConnection {
 
         Write-Verbose $ErrorMessage
 
-        return [PSCustomObject]@{
-            Success = $false
-            Error = $ErrorMessage
-            OrganizationUri = $OrganizationUri
-            TestTimestamp = Get-Date
+            return [PSCustomObject]@{
+                Success = $false
+                Error = $ErrorMessage
+                OrganizationUri = $OrganizationUri
+                TestTimestamp = Get-Date
+            }
         }
+    }
+
+    end {
+        Write-Verbose "Azure DevOps connection test completed"
     }
 }

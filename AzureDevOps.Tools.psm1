@@ -1,5 +1,5 @@
+#Requires -PSEdition Core
 #Requires -Version 7.0
-#Requires -Module Az.Accounts
 
 <#
 .SYNOPSIS

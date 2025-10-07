@@ -1,3 +1,5 @@
+#Requires -PSEdition Core
+
 function Connect-AzureDevOps {
     <#
     .SYNOPSIS
@@ -55,6 +57,7 @@ function Connect-AzureDevOps {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [ValidateScript({
             if ($_ -match '^https://dev\.azure\.com/[a-zA-Z0-9\-]+/?$') {
                 $true
@@ -65,6 +68,7 @@ function Connect-AzureDevOps {
         [string]$OrganizationUri,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [ValidateScript({
             if ($_ -match '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') {
                 $true
@@ -75,6 +79,7 @@ function Connect-AzureDevOps {
         [string]$TenantId,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [ValidateScript({
             if ($_ -match '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') {
                 $true
@@ -85,12 +90,13 @@ function Connect-AzureDevOps {
         [string]$ClientId,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [System.Security.SecureString]$ClientSecret,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter()]
         [string]$Project,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter()]
         [switch]$Force
     )
 
@@ -99,6 +105,10 @@ function Connect-AzureDevOps {
     }
 
     process {
+        # Enforce TLS 1.2 for secure communication
+        Write-Verbose "Enforcing TLS 1.2"
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        
         try {
             # Validate OrganizationUri format
             if ($OrganizationUri -notmatch '^https://dev\.azure\.com/[a-zA-Z0-9\-]+/?$') {

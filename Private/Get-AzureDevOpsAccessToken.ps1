@@ -1,3 +1,5 @@
+#Requires -PSEdition Core
+
 function Get-AzureDevOpsAccessToken {
     <#
     .SYNOPSIS
@@ -28,19 +30,27 @@ function Get-AzureDevOpsAccessToken {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$TenantId,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$ClientId,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [System.Security.SecureString]$ClientSecret
     )
 
-    try {
-        Write-Verbose "Acquiring Azure DevOps access token using OAuth2 client credentials flow"
-        Write-Verbose "TenantId: $TenantId"
-        Write-Verbose "ClientId: $ClientId"
+    begin {
+        Write-Verbose "Initializing Azure DevOps access token acquisition process"
+    }
+
+    process {
+        try {
+            Write-Verbose "Acquiring Azure DevOps access token using OAuth2 client credentials flow"
+            Write-Verbose "TenantId: $TenantId"
+            Write-Verbose "ClientId: $ClientId"
 
         # Convert SecureString to plain text for the API call
         $PlainSecret = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto(
@@ -136,10 +146,15 @@ function Get-AzureDevOpsAccessToken {
         Write-Verbose $ErrorMessage
         throw $ErrorMessage
     }
-    finally {
-        # Clear the plain text secret from memory
-        if ($PlainSecret) {
-            $PlainSecret = $null
+        finally {
+            # Clear the plain text secret from memory
+            if ($PlainSecret) {
+                $PlainSecret = $null
+            }
         }
+    }
+
+    end {
+        Write-Verbose "Azure DevOps access token acquisition process completed"
     }
 }
