@@ -45,8 +45,10 @@ Describe "Connect-AzureDevOps Integration Tests" -Tag "Integration" {
         $script:SkipIntegrationTests = $RequiredFields.Count -gt 0
 
         if ($script:SkipIntegrationTests) {
-            Write-Host "Skipping integration tests. Missing configuration fields: $($RequiredFields -join ', ')" -ForegroundColor Yellow
-            Write-Host "To run integration tests, create Tests/IntegrationTestConfig.psd1 with real credentials" -ForegroundColor Yellow
+            $MissingFields = $RequiredFields -join ', '
+            Write-Host "Skipping integration tests. Missing configuration fields: $MissingFields" -ForegroundColor Yellow
+            $ConfigMessage = "To run integration tests, create Tests/IntegrationTestConfig.psd1 with real credentials"
+            Write-Host $ConfigMessage -ForegroundColor Yellow
         }
         else {
             Write-Host "Integration test configuration is ready!" -ForegroundColor Green
@@ -63,7 +65,13 @@ Describe "Connect-AzureDevOps Integration Tests" -Tag "Integration" {
         It "Should successfully connect using explicit parameters" -Skip:$script:SkipIntegrationTests {
             if ($script:SkipIntegrationTests) { return }
 
-            $Result = Connect-AzureDevOps -OrganizationUri $script:IntegrationTestData.OrganizationUri -TenantId $script:IntegrationTestData.TenantId -ClientId $script:IntegrationTestData.ClientId -ClientSecret $script:TestSecureSecret
+            $ConnectParams = @{
+                OrganizationUri = $script:IntegrationTestData.OrganizationUri
+                TenantId = $script:IntegrationTestData.TenantId
+                ClientId = $script:IntegrationTestData.ClientId
+                ClientSecret = $script:TestSecureSecret
+            }
+            $Result = Connect-AzureDevOps @ConnectParams
 
             $Result | Should -Not -BeNullOrEmpty
             $Result.Status | Should -Match 'Connected.*'
@@ -82,11 +90,17 @@ Describe "Connect-AzureDevOps Integration Tests" -Tag "Integration" {
         It "Should store connection information in script scope" -Skip:$script:SkipIntegrationTests {
             if ($script:SkipIntegrationTests) { return }
 
-            Connect-AzureDevOps -OrganizationUri $script:IntegrationTestData.OrganizationUri -TenantId $script:IntegrationTestData.TenantId -ClientId $script:IntegrationTestData.ClientId -ClientSecret $script:TestSecureSecret | Out-Null
+            $ConnectParams = @{
+                OrganizationUri = $script:IntegrationTestData.OrganizationUri
+                TenantId = $script:IntegrationTestData.TenantId
+                ClientId = $script:IntegrationTestData.ClientId
+                ClientSecret = $script:TestSecureSecret
+            }
+            Connect-AzureDevOps @ConnectParams | Out-Null
 
             # The connection should be stored in script scope (we can't directly test this without exposing it)
             # But we can test that subsequent connections reuse the existing connection
-            $FirstConnection = Connect-AzureDevOps -OrganizationUri $script:IntegrationTestData.OrganizationUri -TenantId $script:IntegrationTestData.TenantId -ClientId $script:IntegrationTestData.ClientId -ClientSecret $script:TestSecureSecret
+            $FirstConnection = Connect-AzureDevOps @ConnectParams
             $FirstConnection.Status | Should -Match 'Connected.*'
         }
 
@@ -94,10 +108,17 @@ Describe "Connect-AzureDevOps Integration Tests" -Tag "Integration" {
             if ($script:SkipIntegrationTests) { return }
 
             # Establish initial connection
-            $InitialConnection = Connect-AzureDevOps -OrganizationUri $script:IntegrationTestData.OrganizationUri -TenantId $script:IntegrationTestData.TenantId -ClientId $script:IntegrationTestData.ClientId -ClientSecret $script:TestSecureSecret
+            $ConnectParams = @{
+                OrganizationUri = $script:IntegrationTestData.OrganizationUri
+                TenantId = $script:IntegrationTestData.TenantId
+                ClientId = $script:IntegrationTestData.ClientId
+                ClientSecret = $script:TestSecureSecret
+            }
+            $InitialConnection = Connect-AzureDevOps @ConnectParams
 
             # Force a new connection
-            $ForcedConnection = Connect-AzureDevOps -OrganizationUri $script:IntegrationTestData.OrganizationUri -TenantId $script:IntegrationTestData.TenantId -ClientId $script:IntegrationTestData.ClientId -ClientSecret $script:TestSecureSecret -Force
+            $ConnectParams.Force = $true
+            $ForcedConnection = Connect-AzureDevOps @ConnectParams
 
             # Both should be connected
             $InitialConnection.Status | Should -Match 'Connected.*'
@@ -116,7 +137,14 @@ Describe "Connect-AzureDevOps Integration Tests" -Tag "Integration" {
                 "TestProject"
             }
 
-            $Result = Connect-AzureDevOps -OrganizationUri $script:IntegrationTestData.OrganizationUri -TenantId $script:IntegrationTestData.TenantId -ClientId $script:IntegrationTestData.ClientId -ClientSecret $script:TestSecureSecret -Project $ProjectName
+            $ConnectParams = @{
+                OrganizationUri = $script:IntegrationTestData.OrganizationUri
+                TenantId = $script:IntegrationTestData.TenantId
+                ClientId = $script:IntegrationTestData.ClientId
+                ClientSecret = $script:TestSecureSecret
+                Project = $ProjectName
+            }
+            $Result = Connect-AzureDevOps @ConnectParams
 
             $Result.Status | Should -Match 'Connected.*'
             $Result.Project | Should -Be $ProjectName
@@ -125,7 +153,13 @@ Describe "Connect-AzureDevOps Integration Tests" -Tag "Integration" {
         It "Should have valid Azure DevOps connection after authentication" -Skip:$script:SkipIntegrationTests {
             if ($script:SkipIntegrationTests) { return }
 
-            $Result = Connect-AzureDevOps -OrganizationUri $script:IntegrationTestData.OrganizationUri -TenantId $script:IntegrationTestData.TenantId -ClientId $script:IntegrationTestData.ClientId -ClientSecret $script:TestSecureSecret
+            $ConnectParams = @{
+                OrganizationUri = $script:IntegrationTestData.OrganizationUri
+                TenantId = $script:IntegrationTestData.TenantId
+                ClientId = $script:IntegrationTestData.ClientId
+                ClientSecret = $script:TestSecureSecret
+            }
+            $Result = Connect-AzureDevOps @ConnectParams
 
             $Result | Should -Not -BeNullOrEmpty
             $Result.Status | Should -Match 'Connected.*'
@@ -141,7 +175,15 @@ Describe "Connect-AzureDevOps Integration Tests" -Tag "Integration" {
             $InvalidClientSecret = ConvertTo-SecureString 'invalid-secret-12345' -AsPlainText -Force
 
             # This should fail with an authentication error
-            { Connect-AzureDevOps -OrganizationUri $script:IntegrationTestData.OrganizationUri -TenantId $script:IntegrationTestData.TenantId -ClientId $script:IntegrationTestData.ClientId -ClientSecret $InvalidClientSecret -ErrorAction Stop -Force } | Should -Throw "*Failed to acquire Azure DevOps access token*"
+            $ConnectParams = @{
+                OrganizationUri = $script:IntegrationTestData.OrganizationUri
+                TenantId = $script:IntegrationTestData.TenantId
+                ClientId = $script:IntegrationTestData.ClientId
+                ClientSecret = $InvalidClientSecret
+                ErrorAction = 'Stop'
+                Force = $true
+            }
+            { Connect-AzureDevOps @ConnectParams } | Should -Throw "*Failed to acquire Azure DevOps access token*"
         }
     }
 }

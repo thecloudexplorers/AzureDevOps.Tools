@@ -108,7 +108,7 @@ function Connect-AzureDevOps {
         # Enforce TLS 1.2 for secure communication
         Write-Verbose "Enforcing TLS 1.2"
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        
+
         try {
             # Validate OrganizationUri format
             if ($OrganizationUri -notmatch '^https://dev\.azure\.com/[a-zA-Z0-9\-]+/?$') {

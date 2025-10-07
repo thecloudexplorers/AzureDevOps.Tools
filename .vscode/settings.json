@@ -10,6 +10,11 @@
   "powershell.enableProfileLoading": true,
   "powershell.scriptAnalysis.enable": true,
   "powershell.scriptAnalysis.settingsPath": ".vscode/PSScriptAnalyzerSettings.psd1",
+  "powershell.analyzeOpenDocumentsOnly": false,
+  "powershell.developer.bundledModulesPath": "",
+  "powershell.powerShellExePath": "",
+  "powershell.promptToUpdatePowerShell": false,
+  "powershell.integratedConsole.showOnStartup": false,
   "powershell.codeFormatting.openBraceOnSameLine": true,
   "powershell.codeFormatting.newLineAfterOpenBrace": true,
   "powershell.codeFormatting.newLineAfterCloseBrace": true,
@@ -29,6 +34,11 @@
     "source.organizeImports": "explicit",
     "source.fixAll": "explicit"
   },
+
+  // Problems panel configuration
+  "problems.showCurrentInStatus": true,
+  "problems.sortOrder": "severity",
+  "problems.decorations.enabled": true,
 
   // Terminal settings
   "terminal.integrated.defaultProfile.windows": "PowerShell",
