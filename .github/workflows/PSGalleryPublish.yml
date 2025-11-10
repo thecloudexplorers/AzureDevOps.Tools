@@ -23,6 +23,7 @@ permissions:
 jobs:
   build:
     permissions:
+      contents: write
       security-events: write
       actions: read
     name: PowerShellGalleryPublish
@@ -31,6 +32,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run PSScriptAnalyzer
         uses: microsoft/psscriptanalyzer-action@6b2948b1944407914a58661c49941824d149734f
