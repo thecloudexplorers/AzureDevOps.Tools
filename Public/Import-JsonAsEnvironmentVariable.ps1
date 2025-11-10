@@ -5,7 +5,8 @@ function Import-JsonAsEnvironmentVariable {
 
     .DESCRIPTION
         Reads a JSON file and sets each key/value pair as environment variables. Nested objects
-        are flattened using dot notation (e.g., parent.child).
+        are flattened using dot notation and converted to POSIX convention (uppercase with underscores).
+        For example, "Database.Server" becomes "DATABASE_SERVER".
 
         The function automatically detects if it's running in an Azure DevOps environment by
         checking for the System.CollectionUri environment variable:
@@ -43,11 +44,11 @@ function Import-JsonAsEnvironmentVariable {
         #   }
         # }
         #
-        # Results in variables:
-        # - Version = "1.0.0"
-        # - Environment = "Production"
-        # - Database.Server = "sql.example.com"
-        # - Database.Port = 1433
+        # Results in POSIX convention environment variables:
+        # - VERSION = "1.0.0"
+        # - ENVIRONMENT = "Production"
+        # - DATABASE_SERVER = "sql.example.com"
+        # - DATABASE_PORT = 1433
 
     .OUTPUTS
         PSCustomObject with import results including variable count and names
@@ -113,6 +114,9 @@ function Import-JsonAsEnvironmentVariable {
             foreach ($Key in $FlattenedVariables.Keys) {
                 $Value = $FlattenedVariables[$Key]
 
+                # Convert key to POSIX convention (uppercase with underscores)
+                $PosixKey = ConvertTo-PosixVariableName -Name $Key
+
                 # Convert value to string
                 $StringValue = if ($null -eq $Value) {
                     ''
@@ -127,17 +131,17 @@ function Import-JsonAsEnvironmentVariable {
                 # Set variable based on environment
                 if ($IsAzureDevOps) {
                     # Set Azure DevOps pipeline variable
-                    Write-Host "##vso[task.setvariable variable=$Key]$StringValue"
-                    Write-Verbose "Set Azure DevOps pipeline variable: $Key = $StringValue"
+                    Write-Host "##vso[task.setvariable variable=$PosixKey]$StringValue"
+                    Write-Verbose "Set Azure DevOps pipeline variable: $PosixKey = $StringValue"
                 }
                 else {
                     # Set PowerShell environment variable
-                    Set-Item -Path "env:$Key" -Value $StringValue -ErrorAction Stop
-                    Write-Verbose "Set PowerShell environment variable: $Key = $StringValue"
+                    Set-Item -Path "env:$PosixKey" -Value $StringValue -ErrorAction Stop
+                    Write-Verbose "Set PowerShell environment variable: $PosixKey = $StringValue"
                 }
 
                 $VariableCount++
-                $VariableNames += $Key
+                $VariableNames += $PosixKey
             }
 
             # Create result object
@@ -259,6 +263,58 @@ function ConvertTo-FlatHashtable {
     else {
         # Single primitive value
         $Result[$Prefix] = $InputObject
+    }
+
+    return $Result
+}
+
+function ConvertTo-PosixVariableName {
+    <#
+    .SYNOPSIS
+        Converts a variable name to POSIX convention
+
+    .DESCRIPTION
+        Converts a variable name to POSIX convention by:
+        - Converting to uppercase
+        - Replacing dots (.) with underscores (_)
+        - Replacing hyphens (-) with underscores (_)
+        - Removing invalid characters
+
+    .PARAMETER Name
+        The variable name to convert
+
+    .OUTPUTS
+        String in POSIX convention (uppercase with underscores)
+
+    .EXAMPLE
+        ConvertTo-PosixVariableName -Name 'Database.Server'
+        # Returns: DATABASE_SERVER
+
+    .EXAMPLE
+        ConvertTo-PosixVariableName -Name 'my-app.version'
+        # Returns: MY_APP_VERSION
+    #>
+
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Name
+    )
+
+    # Convert to uppercase
+    $Result = $Name.ToUpper()
+
+    # Replace dots and hyphens with underscores
+    $Result = $Result -replace '[.\-]', '_'
+
+    # Remove any characters that are not alphanumeric or underscore
+    $Result = $Result -replace '[^A-Z0-9_]', ''
+
+    # Ensure it doesn't start with a number (prepend underscore if it does)
+    if ($Result -match '^\d') {
+        $Result = "_$Result"
     }
 
     return $Result
