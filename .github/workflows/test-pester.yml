@@ -13,6 +13,8 @@ on:
 permissions:
   contents: read
   checks: write
+  pull-requests: write
+  issues: write
 
 jobs:
   test:
@@ -32,14 +34,24 @@ jobs:
         shell: pwsh
         run: |
           Write-Host "Running Pester tests (excluding Integration tests)"
-          $TestResults = Invoke-Pester ./Tests -ExcludeTag Integration -OutputFormat NUnitXml -OutputFile TestResults.xml -PassThru
-          
+
+          $pesterConfig = New-PesterConfiguration
+          $pesterConfig.Run.Path = './Tests'
+          $pesterConfig.Filter.ExcludeTag = 'Integration'
+          $pesterConfig.Run.PassThru = $true
+          $pesterConfig.TestResult.Enabled = $true
+          $pesterConfig.TestResult.OutputFormat = 'NUnitXml'
+          $pesterConfig.TestResult.OutputPath = 'TestResults.xml'
+          $pesterConfig.Output.Verbosity = 'Detailed'
+
+          $TestResults = Invoke-Pester -Configuration $pesterConfig
+
           Write-Host "Test Results:"
           Write-Host "  Total: $($TestResults.TotalCount)"
           Write-Host "  Passed: $($TestResults.PassedCount)"
           Write-Host "  Failed: $($TestResults.FailedCount)"
           Write-Host "  Skipped: $($TestResults.SkippedCount)"
-          
+
           if ($TestResults.FailedCount -gt 0) {
             Write-Host "##[error]Tests failed with $($TestResults.FailedCount) failure(s)"
             exit 1
@@ -51,3 +63,4 @@ jobs:
         with:
           files: TestResults.xml
           check_name: Pester Test Results
+          github_token: ${{ secrets.GITHUB_TOKEN }}
