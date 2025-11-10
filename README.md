@@ -18,6 +18,7 @@ A PowerShell module providing utilities and automation tools for Azure DevOps. T
 
 - Pipeline Management
 - Azure DevOps Configuration Automation
+- Environment Variable Management
 - Resource Management
 - Custom Utility Functions
 
@@ -29,9 +30,63 @@ Import-Module AzureDevOps.Tools
 
 # Connect to Azure DevOps
 Connect-AzureDevOps
+
+# Import JSON configuration as Azure DevOps environment variables
+Import-JsonAsEnvironmentVariable -Path './config.json'
 ```
 
-More detailed usage examples will be added as functions are implemented.
+### Import-JsonAsEnvironmentVariable
+
+Import JSON file content as Azure DevOps pipeline environment variables that can be used by downstream tasks.
+
+**Features:**
+- Parses JSON files and exports each key/value pair as an environment variable
+- Flattens nested objects using dot notation (e.g., `Database.Server`)
+- Supports arrays (converted to JSON string format)
+- Optional prefix for namespacing variables
+- Compatible with Azure DevOps pipelines
+
+**Examples:**
+
+```powershell
+# Import simple JSON configuration
+Import-JsonAsEnvironmentVariable -Path './settings.json'
+
+# Import with variable prefix
+Import-JsonAsEnvironmentVariable -Path './app-config.json' -Prefix 'APP_'
+
+# Sample JSON file (config.json):
+# {
+#   "Version": "1.0.0",
+#   "Environment": "Production",
+#   "Database": {
+#     "Server": "sql.example.com",
+#     "Port": 1433
+#   }
+# }
+#
+# Results in these environment variables:
+# - Version = "1.0.0"
+# - Environment = "Production"
+# - Database.Server = "sql.example.com"
+# - Database.Port = 1433
+```
+
+**Azure DevOps Pipeline Usage:**
+
+```yaml
+steps:
+  - pwsh: |
+      Import-Module AzureDevOps.Tools
+      Import-JsonAsEnvironmentVariable -Path './pipeline-config.json'
+    displayName: 'Import JSON Configuration'
+
+  - pwsh: |
+      Write-Host "Version: $(Version)"
+      Write-Host "Environment: $(Environment)"
+      Write-Host "Database Server: $(Database.Server)"
+    displayName: 'Use Imported Variables'
+```
 
 ## Contributing
 
