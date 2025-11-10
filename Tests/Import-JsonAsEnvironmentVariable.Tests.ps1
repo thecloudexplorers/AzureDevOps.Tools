@@ -31,7 +31,7 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
     }
 
     Context "Valid JSON File Processing" {
-        It "Should import simple JSON file with string values" {
+        It "Should import simple JSON file with string values in POSIX convention" {
             $JsonPath = Join-Path $TestDir "simple.json"
             @{
                 Version     = "1.0.0"
@@ -42,11 +42,11 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
 
             $Result.Status | Should -Be 'Success'
             $Result.VariableCount | Should -Be 2
-            $Result.VariableNames | Should -Contain 'Version'
-            $Result.VariableNames | Should -Contain 'Environment'
+            $Result.VariableNames | Should -Contain 'VERSION'
+            $Result.VariableNames | Should -Contain 'ENVIRONMENT'
         }
 
-        It "Should import JSON file with numeric values" {
+        It "Should import JSON file with numeric values in POSIX convention" {
             $JsonPath = Join-Path $TestDir "numeric.json"
             @{
                 Port           = 8080
@@ -58,12 +58,12 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
 
             $Result.Status | Should -Be 'Success'
             $Result.VariableCount | Should -Be 3
-            $Result.VariableNames | Should -Contain 'Port'
-            $Result.VariableNames | Should -Contain 'MaxConnections'
-            $Result.VariableNames | Should -Contain 'Timeout'
+            $Result.VariableNames | Should -Contain 'PORT'
+            $Result.VariableNames | Should -Contain 'MAXCONNECTIONS'
+            $Result.VariableNames | Should -Contain 'TIMEOUT'
         }
 
-        It "Should import JSON file with boolean values" {
+        It "Should import JSON file with boolean values in POSIX convention" {
             $JsonPath = Join-Path $TestDir "boolean.json"
             @{
                 EnableFeature = $true
@@ -74,11 +74,11 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
 
             $Result.Status | Should -Be 'Success'
             $Result.VariableCount | Should -Be 2
-            $Result.VariableNames | Should -Contain 'EnableFeature'
-            $Result.VariableNames | Should -Contain 'DebugMode'
+            $Result.VariableNames | Should -Contain 'ENABLEFEATURE'
+            $Result.VariableNames | Should -Contain 'DEBUGMODE'
         }
 
-        It "Should flatten nested JSON objects with dot notation" {
+        It "Should flatten nested JSON objects and convert to POSIX convention" {
             $JsonPath = Join-Path $TestDir "nested.json"
             @{
                 Application = @{
@@ -98,14 +98,14 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
 
             $Result.Status | Should -Be 'Success'
             $Result.VariableCount | Should -Be 5
-            $Result.VariableNames | Should -Contain 'Application.Name'
-            $Result.VariableNames | Should -Contain 'Application.Version'
-            $Result.VariableNames | Should -Contain 'Database.Server'
-            $Result.VariableNames | Should -Contain 'Database.Port'
-            $Result.VariableNames | Should -Contain 'Database.Credentials.Username'
+            $Result.VariableNames | Should -Contain 'APPLICATION_NAME'
+            $Result.VariableNames | Should -Contain 'APPLICATION_VERSION'
+            $Result.VariableNames | Should -Contain 'DATABASE_SERVER'
+            $Result.VariableNames | Should -Contain 'DATABASE_PORT'
+            $Result.VariableNames | Should -Contain 'DATABASE_CREDENTIALS_USERNAME'
         }
 
-        It "Should handle JSON with array values as JSON strings" {
+        It "Should handle JSON with array values as JSON strings in POSIX convention" {
             $JsonPath = Join-Path $TestDir "array.json"
             @{
                 Tags  = @("production", "web", "api")
@@ -116,11 +116,11 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
 
             $Result.Status | Should -Be 'Success'
             $Result.VariableCount | Should -Be 2
-            $Result.VariableNames | Should -Contain 'Tags'
-            $Result.VariableNames | Should -Contain 'Ports'
+            $Result.VariableNames | Should -Contain 'TAGS'
+            $Result.VariableNames | Should -Contain 'PORTS'
         }
 
-        It "Should apply prefix to variable names when specified" {
+        It "Should apply prefix to variable names when specified in POSIX convention" {
             $JsonPath = Join-Path $TestDir "prefix.json"
             @{
                 Name    = "TestApp"
@@ -131,12 +131,13 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
 
             $Result.Status | Should -Be 'Success'
             $Result.VariableCount | Should -Be 2
-            $Result.VariableNames | Should -Contain 'APP_.Name'
-            $Result.VariableNames | Should -Contain 'APP_.Version'
+            # Prefix "APP_" + "Name" becomes "APP_.Name" which converts to "APP__NAME"
+            $Result.VariableNames | Should -Contain 'APP__NAME'
+            $Result.VariableNames | Should -Contain 'APP__VERSION'
             $Result.Prefix | Should -Be 'APP_'
         }
 
-        It "Should handle JSON with null values" {
+        It "Should handle JSON with null values in POSIX convention" {
             $JsonPath = Join-Path $TestDir "null.json"
             '{"Key1": "value1", "Key2": null, "Key3": "value3"}' | Set-Content -Path $JsonPath
 
@@ -144,12 +145,12 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
 
             $Result.Status | Should -Be 'Success'
             $Result.VariableCount | Should -Be 3
-            $Result.VariableNames | Should -Contain 'Key1'
-            $Result.VariableNames | Should -Contain 'Key2'
-            $Result.VariableNames | Should -Contain 'Key3'
+            $Result.VariableNames | Should -Contain 'KEY1'
+            $Result.VariableNames | Should -Contain 'KEY2'
+            $Result.VariableNames | Should -Contain 'KEY3'
         }
 
-        It "Should handle JSON with special characters in values" {
+        It "Should handle JSON with special characters in values in POSIX convention" {
             $JsonPath = Join-Path $TestDir "special.json"
             @{
                 Message = "Hello, World!"
@@ -161,9 +162,9 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
 
             $Result.Status | Should -Be 'Success'
             $Result.VariableCount | Should -Be 3
-            $Result.VariableNames | Should -Contain 'Message'
-            $Result.VariableNames | Should -Contain 'Path'
-            $Result.VariableNames | Should -Contain 'Url'
+            $Result.VariableNames | Should -Contain 'MESSAGE'
+            $Result.VariableNames | Should -Contain 'PATH'
+            $Result.VariableNames | Should -Contain 'URL'
         }
     }
 
@@ -368,7 +369,7 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
     }
 
     Context "Edge Cases" {
-        It "Should handle deeply nested objects" {
+        It "Should handle deeply nested objects in POSIX convention" {
             $JsonPath = Join-Path $TestDir "deep.json"
             @{
                 Level1 = @{
@@ -385,7 +386,7 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
             $Result = Import-JsonAsEnvironmentVariable -Path $JsonPath
 
             $Result.Status | Should -Be 'Success'
-            $Result.VariableNames | Should -Contain 'Level1.Level2.Level3.Level4.Value'
+            $Result.VariableNames | Should -Contain 'LEVEL1_LEVEL2_LEVEL3_LEVEL4_VALUE'
         }
 
         It "Should handle JSON with mixed types" {
