@@ -43,7 +43,7 @@ stages:
 
               $pesterConfig = New-PesterConfiguration
               $pesterConfig.Run.Path = './Tests'
-              $pesterConfig.Run.ExcludeTag = 'Integration'
+              $pesterConfig.Filter.ExcludeTag = 'Integration'
               $pesterConfig.Run.PassThru = $true
               $pesterConfig.TestResult.Enabled = $true
               $pesterConfig.TestResult.OutputFormat = 'NUnitXml'
