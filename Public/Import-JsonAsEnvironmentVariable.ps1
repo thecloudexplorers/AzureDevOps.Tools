@@ -159,6 +159,7 @@ function ConvertTo-FlatHashtable {
     #>
 
     [CmdletBinding()]
+    [OutputType([hashtable])]
     param(
         [Parameter(Mandatory = $true)]
         [object]$InputObject,
