@@ -37,15 +37,23 @@ Import-JsonAsEnvironmentVariable -Path './config.json'
 
 ### Import-JsonAsEnvironmentVariable
 
-Import JSON file content as environment variables with automatic POSIX naming convention conversion.
+Import JSON/JSONC file content as environment variables with automatic POSIX naming convention conversion.
 
 **Features:**
-- Parses JSON files and exports each key/value pair as an environment variable
+
+- Parses JSON and JSONC (JSON with Comments) files
+- Exports each key/value pair as an environment variable
 - Flattens nested objects and converts to POSIX convention (uppercase with underscores)
 - Supports arrays (converted to JSON string format)
 - Optional prefix for namespacing variables
 - Auto-detects Azure DevOps environment and sets variables accordingly
 - Compatible with both Azure DevOps pipelines and PowerShell sessions
+
+**JSONC Support:**
+
+- Single-line comments (`//`)
+- Multi-line comments (`/* */`)
+- Trailing commas
 
 **POSIX Variable Naming Convention:**
 
@@ -70,6 +78,9 @@ All variable names are automatically converted to POSIX convention:
 # Import simple JSON configuration
 Import-JsonAsEnvironmentVariable -Path './settings.json'
 
+# Import JSONC file with comments
+Import-JsonAsEnvironmentVariable -Path './config.jsonc'
+
 # Import with variable prefix
 Import-JsonAsEnvironmentVariable -Path './app-config.json' -Prefix 'APP_'
 
@@ -88,6 +99,27 @@ Import-JsonAsEnvironmentVariable -Path './app-config.json' -Prefix 'APP_'
 # - ENVIRONMENT = "Production"
 # - DATABASE_SERVER = "sql.example.com"
 # - DATABASE_PORT = "1433"
+
+# Sample JSONC file (config.jsonc) with comments:
+# {
+#   // Application settings
+#   "app": {
+#     "name": "MyApp",
+#     "version": "2.0.0"
+#   },
+#   /* Database configuration
+#      with multi-line comment */
+#   "database": {
+#     "host": "localhost",
+#     "ssl-enabled": true,  // Trailing comma supported
+#   }
+# }
+#
+# Results in POSIX variables:
+# - APP_NAME = "MyApp"
+# - APP_VERSION = "2.0.0"
+# - DATABASE_HOST = "localhost"
+# - DATABASE_SSL_ENABLED = "true"
 ```
 
 **Azure DevOps Pipeline Usage:**

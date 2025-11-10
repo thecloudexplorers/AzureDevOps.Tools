@@ -1,12 +1,17 @@
 function Import-JsonAsEnvironmentVariable {
     <#
     .SYNOPSIS
-        Imports JSON file content as environment variables
+        Imports JSON/JSONC file content as environment variables
 
     .DESCRIPTION
-        Reads a JSON file and sets each key/value pair as environment variables. Nested objects
-        are flattened using dot notation and converted to POSIX convention (uppercase with underscores).
-        For example, "Database.Server" becomes "DATABASE_SERVER".
+        Reads a JSON or JSONC (JSON with Comments) file and sets each key/value pair as environment
+        variables. Nested objects are flattened using dot notation and converted to POSIX convention
+        (uppercase with underscores). For example, "Database.Server" becomes "DATABASE_SERVER".
+
+        Supports JSONC features:
+        - Single-line comments (//)
+        - Multi-line comments (/* */)
+        - Trailing commas
 
         The function automatically detects if it's running in an Azure DevOps environment by
         checking for the System.CollectionUri environment variable:
@@ -18,7 +23,8 @@ function Import-JsonAsEnvironmentVariable {
           variables using Set-Item. Variables are available in the current PowerShell session.
 
     .PARAMETER Path
-        The path to the JSON file to import. Must be a valid file path.
+        The path to the JSON or JSONC file to import. Must be a valid file path.
+        Supports both .json and .jsonc file extensions.
 
     .PARAMETER Prefix
         Optional prefix to add to all variable names. Useful for namespacing variables.
@@ -27,6 +33,11 @@ function Import-JsonAsEnvironmentVariable {
         Import-JsonAsEnvironmentVariable -Path './config.json'
         # Imports all key/value pairs from config.json as environment variables
         # Sets as Azure DevOps variables if running in a pipeline, otherwise as PowerShell env vars
+
+    .EXAMPLE
+        Import-JsonAsEnvironmentVariable -Path './settings.jsonc'
+        # Imports from a JSONC file with comments
+        # Comments are automatically stripped before parsing
 
     .EXAMPLE
         Import-JsonAsEnvironmentVariable -Path './settings.json' -Prefix 'APP_'
@@ -93,17 +104,26 @@ function Import-JsonAsEnvironmentVariable {
                 throw "File not found: $Path"
             }
 
-            Write-Verbose "Reading JSON file: $Path"
+            Write-Verbose "Reading JSON/JSONC file: $Path"
 
-            # Read and parse JSON file
+            # Read and parse JSON file (supports JSONC with comments)
             $JsonContent = Get-Content -Path $Path -Raw -ErrorAction Stop
+
+            # Remove JSONC comments (single-line // and multi-line /* */)
+            # Remove single-line comments
+            $JsonContent = $JsonContent -replace '(?m)^\s*//.*$', ''
+            # Remove multi-line comments
+            $JsonContent = $JsonContent -replace '(?s)/\*.*?\*/', ''
+            # Remove trailing commas before closing braces/brackets
+            $JsonContent = $JsonContent -replace ',(\s*[}\]])', '$1'
+
             $JsonObject = $JsonContent | ConvertFrom-Json -ErrorAction Stop
 
             if ($null -eq $JsonObject) {
-                throw "JSON file is empty or invalid: $Path"
+                throw "JSON/JSONC file is empty or invalid: $Path"
             }
 
-            Write-Verbose "Successfully parsed JSON file"
+            Write-Verbose "Successfully parsed JSON/JSONC file"
 
             # Flatten JSON object and set environment variables
             $VariableCount = 0

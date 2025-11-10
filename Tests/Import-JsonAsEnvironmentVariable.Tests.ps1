@@ -166,6 +166,63 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
             $Result.VariableNames | Should -Contain 'PATH'
             $Result.VariableNames | Should -Contain 'URL'
         }
+
+        It "Should handle JSONC files with single-line comments" {
+            $JsonPath = Join-Path $TestDir "jsonc-single.jsonc"
+            @"
+{
+    // This is a comment
+    "version": "2.0.0",
+    "enabled": true  // inline comment
+}
+"@ | Set-Content -Path $JsonPath
+
+            $Result = Import-JsonAsEnvironmentVariable -Path $JsonPath
+
+            $Result.Status | Should -Be 'Success'
+            $Result.VariableCount | Should -Be 2
+            $Result.VariableNames | Should -Contain 'VERSION'
+            $Result.VariableNames | Should -Contain 'ENABLED'
+        }
+
+        It "Should handle JSONC files with multi-line comments" {
+            $JsonPath = Join-Path $TestDir "jsonc-multi.jsonc"
+            @"
+{
+    /* This is a
+       multi-line comment */
+    "database": {
+        "host": "localhost",
+        /* Another comment */
+        "port": 5432
+    }
+}
+"@ | Set-Content -Path $JsonPath
+
+            $Result = Import-JsonAsEnvironmentVariable -Path $JsonPath
+
+            $Result.Status | Should -Be 'Success'
+            $Result.VariableCount | Should -Be 2
+            $Result.VariableNames | Should -Contain 'DATABASE_HOST'
+            $Result.VariableNames | Should -Contain 'DATABASE_PORT'
+        }
+
+        It "Should handle JSONC files with trailing commas" {
+            $JsonPath = Join-Path $TestDir "jsonc-trailing.jsonc"
+            @"
+{
+    "app": "MyApp",
+    "version": "1.0",
+}
+"@ | Set-Content -Path $JsonPath
+
+            $Result = Import-JsonAsEnvironmentVariable -Path $JsonPath
+
+            $Result.Status | Should -Be 'Success'
+            $Result.VariableCount | Should -Be 2
+            $Result.VariableNames | Should -Contain 'APP'
+            $Result.VariableNames | Should -Contain 'VERSION'
+        }
     }
 
     Context "Invalid JSON File Handling" {
