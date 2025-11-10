@@ -166,6 +166,63 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
             $Result.VariableNames | Should -Contain 'PATH'
             $Result.VariableNames | Should -Contain 'URL'
         }
+
+        It "Should handle JSONC files with single-line comments" {
+            $JsonPath = Join-Path $TestDir "jsonc-single.jsonc"
+            @"
+{
+    // This is a comment
+    "version": "2.0.0",
+    "enabled": true  // inline comment
+}
+"@ | Set-Content -Path $JsonPath
+
+            $Result = Import-JsonAsEnvironmentVariable -Path $JsonPath
+
+            $Result.Status | Should -Be 'Success'
+            $Result.VariableCount | Should -Be 2
+            $Result.VariableNames | Should -Contain 'VERSION'
+            $Result.VariableNames | Should -Contain 'ENABLED'
+        }
+
+        It "Should handle JSONC files with multi-line comments" {
+            $JsonPath = Join-Path $TestDir "jsonc-multi.jsonc"
+            @"
+{
+    /* This is a
+       multi-line comment */
+    "database": {
+        "host": "localhost",
+        /* Another comment */
+        "port": 5432
+    }
+}
+"@ | Set-Content -Path $JsonPath
+
+            $Result = Import-JsonAsEnvironmentVariable -Path $JsonPath
+
+            $Result.Status | Should -Be 'Success'
+            $Result.VariableCount | Should -Be 2
+            $Result.VariableNames | Should -Contain 'DATABASE_HOST'
+            $Result.VariableNames | Should -Contain 'DATABASE_PORT'
+        }
+
+        It "Should handle JSONC files with trailing commas" {
+            $JsonPath = Join-Path $TestDir "jsonc-trailing.jsonc"
+            @"
+{
+    "app": "MyApp",
+    "version": "1.0",
+}
+"@ | Set-Content -Path $JsonPath
+
+            $Result = Import-JsonAsEnvironmentVariable -Path $JsonPath
+
+            $Result.Status | Should -Be 'Success'
+            $Result.VariableCount | Should -Be 2
+            $Result.VariableNames | Should -Contain 'APP'
+            $Result.VariableNames | Should -Contain 'VERSION'
+        }
     }
 
     Context "Invalid JSON File Handling" {
@@ -209,11 +266,13 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
                 Remove-Item Env:\SYSTEM_COLLECTIONURI -ErrorAction SilentlyContinue
             }
 
-            # Clean up test environment variables
-            Remove-Item Env:\BuildNumber -ErrorAction SilentlyContinue
-            Remove-Item Env:\Environment -ErrorAction SilentlyContinue
-            Remove-Item Env:\TestVar1 -ErrorAction SilentlyContinue
-            Remove-Item Env:\TestVar2 -ErrorAction SilentlyContinue
+            # Clean up test environment variables (POSIX naming)
+            Remove-Item Env:\BUILDNUMBER -ErrorAction SilentlyContinue
+            Remove-Item Env:\ENVIRONMENT -ErrorAction SilentlyContinue
+            Remove-Item Env:\TESTVAR1 -ErrorAction SilentlyContinue
+            Remove-Item Env:\TESTVAR2 -ErrorAction SilentlyContinue
+            Remove-Item Env:\TESTVAR -ErrorAction SilentlyContinue
+            Remove-Item Env:\TESTKEY -ErrorAction SilentlyContinue
         }
 
         It "Should detect Azure DevOps environment when SYSTEM_COLLECTIONURI is set" {
@@ -259,10 +318,10 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
             # Capture Write-Host output
             $Output = Import-JsonAsEnvironmentVariable -Path $JsonPath *>&1 | Where-Object { $_ -is [string] -or $_.GetType().Name -eq 'InformationRecord' }
 
-            # Check for Azure DevOps variable syntax
+            # Check for Azure DevOps variable syntax (POSIX naming)
             $HostOutput = ($Output | Where-Object { $_ -match '##vso\[task\.setvariable' }) -join "`n"
-            $HostOutput | Should -Match '##vso\[task\.setvariable variable=BuildNumber\]1\.2\.3'
-            $HostOutput | Should -Match '##vso\[task\.setvariable variable=Environment\]Staging'
+            $HostOutput | Should -Match '##vso\[task\.setvariable variable=BUILDNUMBER\]1\.2\.3'
+            $HostOutput | Should -Match '##vso\[task\.setvariable variable=ENVIRONMENT\]Staging'
         }
 
         It "Should set PowerShell environment variables when not in Azure DevOps environment" {
@@ -277,9 +336,9 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
 
             $Result = Import-JsonAsEnvironmentVariable -Path $JsonPath
 
-            # Verify variables were set in PowerShell environment
-            $env:TestVar1 | Should -Be "Value1"
-            $env:TestVar2 | Should -Be "Value2"
+            # Verify variables were set in PowerShell environment (POSIX convention)
+            $env:TESTVAR1 | Should -Be "Value1"
+            $env:TESTVAR2 | Should -Be "Value2"
             $Result.Status | Should -Be 'Success'
             $Result.VariableCount | Should -Be 2
         }
@@ -294,15 +353,16 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
             # Simulate Azure DevOps environment
             $env:SYSTEM_COLLECTIONURI = "https://dev.azure.com/myorg/"
 
-            # Clear any existing test variables
-            Remove-Item Env:\TestVar1 -ErrorAction SilentlyContinue
-            Remove-Item Env:\TestVar2 -ErrorAction SilentlyContinue
+            # Clear any existing test variables (POSIX naming)
+            Remove-Item Env:\TESTVAR1 -ErrorAction SilentlyContinue
+            Remove-Item Env:\TESTVAR2 -ErrorAction SilentlyContinue
 
             $Result = Import-JsonAsEnvironmentVariable -Path $JsonPath
 
             # Verify variables were NOT set in PowerShell environment (only Azure DevOps output)
-            $env:TestVar1 | Should -BeNullOrEmpty
-            $env:TestVar2 | Should -BeNullOrEmpty
+            # Check with POSIX naming
+            $env:TESTVAR1 | Should -BeNullOrEmpty
+            $env:TESTVAR2 | Should -BeNullOrEmpty
             $Result.Status | Should -Be 'Success'
             $Result.VariableCount | Should -Be 2
         }
@@ -318,7 +378,8 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
             $VerboseOutput = Import-JsonAsEnvironmentVariable -Path $JsonPath -Verbose 4>&1
 
             $VerboseMessages = $VerboseOutput | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message }
-            $VerboseMessages -join "`n" | Should -Match "Set Azure DevOps pipeline variable: TestKey"
+            # Check for POSIX variable name
+            $VerboseMessages -join "`n" | Should -Match "Set Azure DevOps pipeline variable: TESTKEY"
         }
 
         It "Should include correct verbose messages for PowerShell variable setting" {
@@ -332,7 +393,8 @@ Describe "Import-JsonAsEnvironmentVariable Function Tests" {
             $VerboseOutput = Import-JsonAsEnvironmentVariable -Path $JsonPath -Verbose 4>&1
 
             $VerboseMessages = $VerboseOutput | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message }
-            $VerboseMessages -join "`n" | Should -Match "Set PowerShell environment variable: TestKey"
+            # Check for POSIX variable name
+            $VerboseMessages -join "`n" | Should -Match "Set PowerShell environment variable: TESTKEY"
         }
     }
 
