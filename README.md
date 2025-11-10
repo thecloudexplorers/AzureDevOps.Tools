@@ -37,14 +37,32 @@ Import-JsonAsEnvironmentVariable -Path './config.json'
 
 ### Import-JsonAsEnvironmentVariable
 
-Import JSON file content as Azure DevOps pipeline environment variables that can be used by downstream tasks.
+Import JSON file content as environment variables with automatic POSIX naming convention conversion.
 
 **Features:**
 - Parses JSON files and exports each key/value pair as an environment variable
-- Flattens nested objects using dot notation (e.g., `Database.Server`)
+- Flattens nested objects and converts to POSIX convention (uppercase with underscores)
 - Supports arrays (converted to JSON string format)
 - Optional prefix for namespacing variables
-- Compatible with Azure DevOps pipelines
+- Auto-detects Azure DevOps environment and sets variables accordingly
+- Compatible with both Azure DevOps pipelines and PowerShell sessions
+
+**POSIX Variable Naming Convention:**
+
+All variable names are automatically converted to POSIX convention:
+
+- Converted to UPPERCASE
+- Dots (`.`) replaced with underscores (`_`)
+- Hyphens (`-`) replaced with underscores (`_`)
+- Invalid characters removed
+- Variables starting with numbers are prefixed with underscore
+
+| JSON Key | Environment Variable |
+|----------|---------------------|
+| `version` | `VERSION` |
+| `Database.Server` | `DATABASE_SERVER` |
+| `app-name` | `APP_NAME` |
+| `api.endpoint.url` | `API_ENDPOINT_URL` |
 
 **Examples:**
 
@@ -57,19 +75,19 @@ Import-JsonAsEnvironmentVariable -Path './app-config.json' -Prefix 'APP_'
 
 # Sample JSON file (config.json):
 # {
-#   "Version": "1.0.0",
-#   "Environment": "Production",
-#   "Database": {
-#     "Server": "sql.example.com",
-#     "Port": 1433
+#   "version": "1.0.0",
+#   "environment": "Production",
+#   "database": {
+#     "server": "sql.example.com",
+#     "port": 1433
 #   }
 # }
 #
-# Results in these environment variables:
-# - Version = "1.0.0"
-# - Environment = "Production"
-# - Database.Server = "sql.example.com"
-# - Database.Port = 1433
+# Results in these POSIX environment variables:
+# - VERSION = "1.0.0"
+# - ENVIRONMENT = "Production"
+# - DATABASE_SERVER = "sql.example.com"
+# - DATABASE_PORT = "1433"
 ```
 
 **Azure DevOps Pipeline Usage:**
@@ -82,9 +100,9 @@ steps:
     displayName: 'Import JSON Configuration'
 
   - pwsh: |
-      Write-Host "Version: $(Version)"
-      Write-Host "Environment: $(Environment)"
-      Write-Host "Database Server: $(Database.Server)"
+      Write-Host "Version: $(VERSION)"
+      Write-Host "Environment: $(ENVIRONMENT)"
+      Write-Host "Database Server: $(DATABASE_SERVER)"
     displayName: 'Use Imported Variables'
 ```
 
@@ -94,7 +112,53 @@ steps:
 2. Create a feature branch (`git checkout -b feature/MyFeature`)
 3. Commit your changes (`git commit -am 'Add MyFeature'`)
 4. Push to the branch (`git push origin feature/MyFeature`)
-5. Create a Pull Request
+5. Create a Pull Request with appropriate labels (see Version Bumping below)
+
+### Version Bumping
+
+This repository uses automatic semantic versioning based on PR labels. When your PR is merged to `main`, the version is automatically bumped and published.
+
+**Version Bump Rules:**
+
+The workflow determines version bumps based on PR labels with the following priority:
+
+1. **Major Version Bump (X.0.0)**
+   - Label Required: `major`
+   - Use for: Breaking changes, major new features
+   - Example: `v1.2.3` → `v2.0.0`
+
+2. **Minor Version Bump (0.X.0)** - DEFAULT
+   - Labels: `minor` OR no version/bug label
+   - Use for: New features, enhancements
+   - Example: `v1.2.3` → `v1.3.0`
+   - **Note:** This is the default if no version or bug label is found
+
+3. **Patch Version Bump (0.0.X)**
+   - Labels: `patch` OR `bug`
+   - Use for: Bug fixes, small changes
+   - Example: `v1.2.3` → `v1.2.4`
+
+**Label Priority:**
+
+If multiple labels are present, the workflow checks in this order:
+
+1. `major` (highest priority)
+2. `minor`
+3. `patch`
+4. `bug` (same as patch)
+
+**Example:**
+
+```bash
+# For a bug fix PR
+gh pr create --title "Fix authentication issue" --label bug
+
+# For a new feature PR
+gh pr create --title "Add new export function" --label minor
+
+# For a breaking change PR
+gh pr create --title "Redesign API interface" --label major
+```
 
 ## Testing
 
