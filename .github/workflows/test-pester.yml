@@ -1,6 +1,9 @@
 name: Pester Tests
 
 on:
+  push:
+    branches:
+      - users/wcamargo/*
   pull_request:
     branches:
       - main

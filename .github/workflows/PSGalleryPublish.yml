@@ -16,24 +16,21 @@ on:
   pull_request:
     branches:
       - main
-  workflow_run:
-    workflows:
-      - PowerShellGalleryPublish
-    types:
-      - completed
 
 permissions:
-  contents: write # for creating tags and releases
+  contents: write
 
 jobs:
   build:
     permissions:
-      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
-      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+      security-events: write
+      actions: read
     name: PowerShellGalleryPublish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Run PSScriptAnalyzer
         uses: microsoft/psscriptanalyzer-action@6b2948b1944407914a58661c49941824d149734f
@@ -52,11 +49,154 @@ jobs:
         with:
           sarif_file: results.sarif
 
+      - name: Bump version on PR merge
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: bump_version
+        shell: pwsh
+        run: |
+          Write-Host "##[group]Determine version bump type"
+
+          $latestCommit = git log -1 --format='%H'
+          Write-Verbose "Latest commit: $latestCommit"
+
+          $prNumber = git log -1 --format='%s' | Select-String -Pattern '#(\d+)' | ForEach-Object { $_.Matches.Groups[1].Value }
+
+          if (-not $prNumber) {
+              Write-Host "No PR number found in commit message, defaulting to minor bump"
+              $bumpType = 'minor'
+          }
+          else {
+              Write-Host "PR Number: $prNumber"
+
+              $headers = @{
+                  'Authorization' = "Bearer ${{ secrets.GITHUB_TOKEN }}"
+                  'Accept' = 'application/vnd.github.v3+json'
+              }
+
+              try {
+                  $prInfo = Invoke-RestMethod -Uri "https://api.github.com/repos/${{ github.repository }}/pulls/$prNumber" -Headers $headers -ErrorAction Stop
+                  $labels = $prInfo.labels.name
+
+                  Write-Host "PR Labels: $($labels -join ', ')"
+
+                  if ($labels -contains 'major') {
+                      $bumpType = 'major'
+                      Write-Host "Found 'major' label - performing major version bump"
+                  }
+                  elseif ($labels -contains 'minor') {
+                      $bumpType = 'minor'
+                      Write-Host "Found 'minor' label - performing minor version bump"
+                  }
+                  elseif ($labels -contains 'patch' -or $labels -contains 'bug') {
+                      $bumpType = 'patch'
+                      Write-Host "Found 'patch' or 'bug' label - performing patch version bump"
+                  }
+                  else {
+                      $bumpType = 'minor'
+                      Write-Host "No version or bug label found - defaulting to minor version bump"
+                  }
+              }
+              catch {
+                  Write-Host "Failed to fetch PR info: $_"
+                  Write-Host "Defaulting to minor version bump"
+                  $bumpType = 'minor'
+              }
+          }
+
+          Write-Host "##[endgroup]"
+          Write-Host "##[group]Calculate new version"
+
+          $manifestPath = './AzureDevOps.Tools.psd1'
+          $manifest = Import-PowerShellDataFile -Path $manifestPath
+          $currentVersion = [version]$manifest.ModuleVersion
+
+          Write-Host "Current version: $currentVersion"
+          Write-Host "Bump type: $bumpType"
+
+          switch ($bumpType) {
+              'major' {
+                  $newVersion = [version]::new($currentVersion.Major + 1, 0, 0)
+              }
+              'minor' {
+                  $newVersion = [version]::new($currentVersion.Major, $currentVersion.Minor + 1, 0)
+              }
+              'patch' {
+                  $newVersion = [version]::new($currentVersion.Major, $currentVersion.Minor, $currentVersion.Build + 1)
+              }
+          }
+
+          Write-Host "New version: $newVersion"
+
+          $content = Get-Content -Path $manifestPath -Raw
+          $content = $content -replace "ModuleVersion\s*=\s*'[^']*'", "ModuleVersion = '$newVersion'"
+          Set-Content -Path $manifestPath -Value $content -NoNewline
+
+          Write-Host "##[endgroup]"
+
+          echo "new_version=$newVersion" >> $env:GITHUB_OUTPUT
+          echo "previous_version=$currentVersion" >> $env:GITHUB_OUTPUT
+          echo "bump_type=$bumpType" >> $env:GITHUB_OUTPUT
+
+      - name: Commit version bump
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.bump_version.outputs.new_version != ''
+        shell: pwsh
+        run: |
+          Write-Host "##[group]Commit and push version bump"
+
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add AzureDevOps.Tools.psd1
+          git commit -m "chore: bump version to ${{ steps.bump_version.outputs.new_version }} [skip ci]"
+          git push
+
+          Write-Host "##[endgroup]"
+
+      - name: Create git tag
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.bump_version.outputs.new_version != ''
+        shell: pwsh
+        run: |
+          Write-Host "##[group]Create and push git tag"
+
+          git tag "v${{ steps.bump_version.outputs.new_version }}"
+          git push origin "v${{ steps.bump_version.outputs.new_version }}"
+
+          Write-Host "##[endgroup]"
+
+      - name: Create GitHub release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.bump_version.outputs.new_version != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const newVersion = '${{ steps.bump_version.outputs.new_version }}';
+            const previousVersion = '${{ steps.bump_version.outputs.previous_version }}';
+            const bumpType = '${{ steps.bump_version.outputs.bump_type }}';
+
+            const commitMessage = context.payload.head_commit.message;
+            const commitAuthor = context.payload.head_commit.author.name;
+
+            let releaseBody = `## Changes\n\n`;
+            releaseBody += `**Type:** ${bumpType.charAt(0).toUpperCase() + bumpType.slice(1)} version bump\n\n`;
+            releaseBody += `${commitMessage}\n\n`;
+            releaseBody += `**Author:** ${commitAuthor}\n\n`;
+            releaseBody += `**Full Changelog:** v${previousVersion}...v${newVersion}`;
+
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: `v${newVersion}`,
+              name: `v${newVersion}`,
+              body: releaseBody,
+              draft: false,
+              prerelease: false
+            });
+
       # Extract version from module manifest for tagging
       - name: Get module version
         id: get_version
         shell: pwsh
         run: |
+          Write-Host "##[group]Get module version for publishing"
+
           $manifest = Import-PowerShellDataFile -Path './AzureDevOps.Tools.psd1'
           $version = $manifest.ModuleVersion
           $prerelease = $manifest.PrivateData.PSData.Prerelease
@@ -66,10 +206,32 @@ jobs:
             $fullVersion = $version
           }
           echo "version=$fullVersion" >> $env:GITHUB_OUTPUT
-          echo "Module version: $fullVersion"
+          Write-Host "Module version: $fullVersion"
+
+          Write-Host "##[endgroup]"
 
       - name: Publish to powershell gallery
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         shell: pwsh
         run: |
-          Publish-Module -Path './' -NuGetApiKey ${{ secrets.POWERSHELL_GALLERY_API_KEY }}
+          Write-Host "##[group]Publish to PowerShell Gallery"
+
+          Write-Verbose "Enforcing TLS 1.2"
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+          $publishParams = @{
+              Path = './'
+              NuGetApiKey = '${{ secrets.POWERSHELL_GALLERY_API_KEY }}'
+              ErrorAction = 'Stop'
+          }
+
+          try {
+              Publish-Module @publishParams
+              Write-Host "Successfully published module version ${{ steps.get_version.outputs.version }}"
+          }
+          catch {
+              Write-Error "Failed to publish module: $_"
+              throw
+          }
+
+          Write-Host "##[endgroup]"
