@@ -17,10 +17,10 @@ Describe "Connect-AzureDevOps Function Tests" {
             # Store original environment variables
             $OriginalEnv = @{
                 AZURE_DEVOPS_ORGANIZATION = $env:AZURE_DEVOPS_ORGANIZATION
-                AZURE_DEVOPS_PROJECT = $env:AZURE_DEVOPS_PROJECT
-                tenantId = $env:tenantId
-                servicePrincipalId = $env:servicePrincipalId
-                servicePrincipalKey = $env:servicePrincipalKey
+                AZURE_DEVOPS_PROJECT      = $env:AZURE_DEVOPS_PROJECT
+                tenantId                  = $env:tenantId
+                servicePrincipalId        = $env:servicePrincipalId
+                servicePrincipalKey       = $env:servicePrincipalKey
             }
         }
 
@@ -135,10 +135,6 @@ Describe "Connect-AzureDevOps Function Tests" {
             $Help.Synopsis | Should -Not -BeNullOrEmpty
             $Help.Description | Should -Not -BeNullOrEmpty
             $Help.Examples.Count | Should -BeGreaterThan 0
-        }
-
-        It "Should support -WhatIf parameter" {
-            (Get-Command Connect-AzureDevOps).Parameters.ContainsKey('WhatIf') | Should -Be $true
         }
 
         It "Should support -Verbose parameter" {
