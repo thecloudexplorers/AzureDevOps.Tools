@@ -1,17 +1,20 @@
 function Import-JsonAsEnvironmentVariable {
     <#
     .SYNOPSIS
-        Imports JSON file content as Azure DevOps pipeline environment variables
+        Imports JSON file content as environment variables
 
     .DESCRIPTION
-        Reads a JSON file and sets each key/value pair as an Azure DevOps pipeline environment
-        variable that can be used by downstream tasks. Nested objects are flattened using dot
-        notation (e.g., parent.child).
+        Reads a JSON file and sets each key/value pair as environment variables. Nested objects
+        are flattened using dot notation (e.g., parent.child).
 
-        This function uses the Azure DevOps logging command syntax:
-        ##vso[task.setvariable variable=NAME]VALUE
+        The function automatically detects if it's running in an Azure DevOps environment by
+        checking for the System.CollectionUri environment variable:
 
-        Variables set by this function are available to all subsequent tasks in the same job.
+        - If System.CollectionUri exists: Sets variables as Azure DevOps pipeline variables using
+          the ##vso[task.setvariable] logging command. Variables are available to downstream tasks.
+
+        - If System.CollectionUri is not set: Sets variables as standard PowerShell environment
+          variables using Set-Item. Variables are available in the current PowerShell session.
 
     .PARAMETER Path
         The path to the JSON file to import. Must be a valid file path.
@@ -22,10 +25,12 @@ function Import-JsonAsEnvironmentVariable {
     .EXAMPLE
         Import-JsonAsEnvironmentVariable -Path './config.json'
         # Imports all key/value pairs from config.json as environment variables
+        # Sets as Azure DevOps variables if running in a pipeline, otherwise as PowerShell env vars
 
     .EXAMPLE
         Import-JsonAsEnvironmentVariable -Path './settings.json' -Prefix 'APP_'
         # Imports all key/value pairs with APP_ prefix (e.g., APP_Version, APP_Environment)
+        # Automatically detects environment and sets variables accordingly
 
     .EXAMPLE
         # Sample JSON file content:
@@ -50,8 +55,8 @@ function Import-JsonAsEnvironmentVariable {
     .NOTES
         Author: The Cloud Explorers
         Requires PowerShell 7.0 or later
-        Designed for Azure DevOps pipelines
-        Version: 1.0.0
+        Automatically detects Azure DevOps environment via System.CollectionUri
+        Version: 1.1.0
     #>
 
     [CmdletBinding()]
@@ -66,6 +71,18 @@ function Import-JsonAsEnvironmentVariable {
 
     begin {
         Write-Verbose "Starting JSON environment variable import"
+
+        # Detect if running in Azure DevOps environment
+        $IsAzureDevOps = -not [string]::IsNullOrEmpty($env:SYSTEM_COLLECTIONURI)
+
+        if ($IsAzureDevOps) {
+            Write-Verbose "Detected Azure DevOps environment (System.CollectionUri: $env:SYSTEM_COLLECTIONURI)"
+            Write-Verbose "Variables will be set as Azure DevOps pipeline variables"
+        }
+        else {
+            Write-Verbose "Not running in Azure DevOps environment"
+            Write-Verbose "Variables will be set as PowerShell environment variables"
+        }
     }
 
     process {
@@ -99,15 +116,25 @@ function Import-JsonAsEnvironmentVariable {
                 # Convert value to string
                 $StringValue = if ($null -eq $Value) {
                     ''
-                } elseif ($Value -is [bool]) {
+                }
+                elseif ($Value -is [bool]) {
                     $Value.ToString().ToLower()
-                } else {
+                }
+                else {
                     $Value.ToString()
                 }
 
-                # Set Azure DevOps environment variable
-                Write-Host "##vso[task.setvariable variable=$Key]$StringValue"
-                Write-Verbose "Set variable: $Key = $StringValue"
+                # Set variable based on environment
+                if ($IsAzureDevOps) {
+                    # Set Azure DevOps pipeline variable
+                    Write-Host "##vso[task.setvariable variable=$Key]$StringValue"
+                    Write-Verbose "Set Azure DevOps pipeline variable: $Key = $StringValue"
+                }
+                else {
+                    # Set PowerShell environment variable
+                    Set-Item -Path "env:$Key" -Value $StringValue -ErrorAction Stop
+                    Write-Verbose "Set PowerShell environment variable: $Key = $StringValue"
+                }
 
                 $VariableCount++
                 $VariableNames += $Key
@@ -115,12 +142,12 @@ function Import-JsonAsEnvironmentVariable {
 
             # Create result object
             $Result = [PSCustomObject]@{
-                Status = 'Success'
-                FilePath = $Path
+                Status        = 'Success'
+                FilePath      = $Path
                 VariableCount = $VariableCount
                 VariableNames = $VariableNames
-                Prefix = $Prefix
-                ImportedAt = Get-Date
+                Prefix        = $Prefix
+                ImportedAt    = Get-Date
             }
 
             Write-Host "Successfully imported $VariableCount variable(s) from JSON file" -ForegroundColor Green
