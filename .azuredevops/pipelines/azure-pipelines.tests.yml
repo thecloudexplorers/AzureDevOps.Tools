@@ -41,16 +41,16 @@ stages:
               Write-Host "##[group]Run Pester Tests"
               Write-Verbose "Executing Pester tests (excluding Integration tests)"
 
-              $pesterParams = @{
-                  Path         = './Tests'
-                  ExcludeTag   = 'Integration'
-                  OutputFormat = 'NUnitXml'
-                  OutputFile   = 'TestResults.xml'
-                  PassThru     = $true
-                  CI           = $true
-              }
+              $pesterConfig = New-PesterConfiguration
+              $pesterConfig.Run.Path = './Tests'
+              $pesterConfig.Run.ExcludeTag = 'Integration'
+              $pesterConfig.Run.PassThru = $true
+              $pesterConfig.TestResult.Enabled = $true
+              $pesterConfig.TestResult.OutputFormat = 'NUnitXml'
+              $pesterConfig.TestResult.OutputPath = 'TestResults.xml'
+              $pesterConfig.Output.Verbosity = 'Detailed'
 
-              $testResults = Invoke-Pester @pesterParams
+              $testResults = Invoke-Pester -Configuration $pesterConfig
 
               Write-Host "##[section]Test Results Summary"
               Write-Host "  Total Tests: $($testResults.TotalCount)"
@@ -95,16 +95,16 @@ stages:
               Write-Host "##[group]Run Integration Tests"
               Write-Verbose "Executing Pester integration tests"
 
-              $pesterParams = @{
-                  Path         = './Tests'
-                  Tag          = 'Integration'
-                  OutputFormat = 'NUnitXml'
-                  OutputFile   = 'IntegrationTestResults.xml'
-                  PassThru     = $true
-                  CI           = $true
-              }
+              $pesterConfig = New-PesterConfiguration
+              $pesterConfig.Run.Path = './Tests'
+              $pesterConfig.Filter.Tag = 'Integration'
+              $pesterConfig.Run.PassThru = $true
+              $pesterConfig.TestResult.Enabled = $true
+              $pesterConfig.TestResult.OutputFormat = 'NUnitXml'
+              $pesterConfig.TestResult.OutputPath = 'IntegrationTestResults.xml'
+              $pesterConfig.Output.Verbosity = 'Detailed'
 
-              $testResults = Invoke-Pester @pesterParams
+              $testResults = Invoke-Pester -Configuration $pesterConfig
 
               Write-Host "##[section]Integration Test Results Summary"
               Write-Host "  Total Tests: $($testResults.TotalCount)"
