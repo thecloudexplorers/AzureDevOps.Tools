@@ -1,5 +1,6 @@
 #Requires -Version 7.0
-#Requires -Module Az.Accounts
+# Note: Az.Accounts is not strictly required for all functions
+# #Requires -Module Az.Accounts
 
 <#
 .SYNOPSIS

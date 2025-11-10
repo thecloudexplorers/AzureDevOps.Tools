@@ -27,7 +27,7 @@
     RequiredModules   = @()
 
     # Functions to export from this module
-    FunctionsToExport = @('Connect-AzureDevOps')
+    FunctionsToExport = @('Connect-AzureDevOps', 'Import-JsonAsEnvironmentVariable')
 
     # Cmdlets to export from this module
     CmdletsToExport   = @()
